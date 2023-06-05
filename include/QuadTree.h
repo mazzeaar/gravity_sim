@@ -23,6 +23,7 @@ public:
     QuadTree(double xmin, double ymin, double xmax, double ymax);
 
     ~QuadTree();
+    void clear();
 
     bool contains(Body* body);
     void subdivide();

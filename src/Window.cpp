@@ -65,7 +65,7 @@ bool Window::is_open()
 void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree)
 {
     sf::Event event;
-    while (this->window->pollEvent(event))
+    if (this->window->pollEvent(event))
     {
         if (event.type == sf::Event::Closed)
         {

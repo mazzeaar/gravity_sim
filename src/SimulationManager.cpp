@@ -55,7 +55,7 @@ void SimulationManager::resume()
     this->paused = false;
 }
 
-void SimulationManager::set_G(double G)
+void SimulationManager::set_G(/*SNOOP D-O-*/ double G)
 {
     this->G = G;
 }
@@ -123,8 +123,7 @@ void SimulationManager::draw_simulation()
 
     this->window->display();
 
-    delete this->tree;
-    this->tree = new QuadTree(0.0, 0.0, (double) this->window->get_width(), (double) this->window->get_height());
+    this->tree->clear();
 }
 
 void SimulationManager::handle_window_events()

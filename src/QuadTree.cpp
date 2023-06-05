@@ -76,7 +76,7 @@ void QuadTree::subdivide()
 
 void QuadTree::compute_force(Body* body, double theta, double G)
 {
-    double epsilon = 0.2;
+    double epsilon = 0.2; // softening factor, else force goes to infinity when dist == smol
 
     if (this->body == nullptr || this->body == body)
     {
@@ -130,32 +130,51 @@ void QuadTree::add_bodys(std::vector<Body*>& bodies)
 
 void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
 {
-
     sf::RectangleShape* rect = new sf::RectangleShape(); // Create a dynamic object
     rect->setSize(sf::Vector2f(bottom_right.x - top_left.x, bottom_right.y - top_left.y));
     rect->setPosition(sf::Vector2f(top_left.x, top_left.y));
     rect->setFillColor(sf::Color::Transparent);
     rect->setOutlineColor(sf::Color::Green);
-    rect->setOutlineThickness(0.5f);
+    rect->setOutlineThickness(1.0f);
     rectangles.push_back(rect);
 
     if (NW != nullptr)
     {
-        //std::vector<sf::RectangleShape*> nwRectangles;
         NW->get_bounding_rectangles(rectangles);
-        //rectangles.insert(rectangles.end(), nwRectangles.begin(), nwRectangles.end());
-
-        //std::vector<sf::RectangleShape*> neRectangles;
         NE->get_bounding_rectangles(rectangles);
-        //rectangles.insert(rectangles.end(), neRectangles.begin(), neRectangles.end());
-
-        //std::vector<sf::RectangleShape*> swRectangles;
         SW->get_bounding_rectangles(rectangles);
-        //rectangles.insert(rectangles.end(), swRectangles.begin(), swRectangles.end());
-
-        //std::vector<sf::RectangleShape*> seRectangles;
         SE->get_bounding_rectangles(rectangles);
-        //rectangles.insert(rectangles.end(), seRectangles.begin(), seRectangles.end());
     }
 }
 
+void QuadTree::clear()
+{
+    if (NW != nullptr)
+    {
+        NW->clear();
+        delete NW;
+        NW = nullptr;
+    }
+    if (NE != nullptr)
+    {
+        NE->clear();
+        delete NE;
+        NE = nullptr;
+    }
+    if (SW != nullptr)
+    {
+        SW->clear();
+        delete SW;
+        SW = nullptr;
+    }
+    if (SE != nullptr)
+    {
+        SE->clear();
+        delete SE;
+        SE = nullptr;
+    }
+
+    body = nullptr;
+    center_of_mass = Vec2(0, 0);
+    mass = 0.0;
+}
