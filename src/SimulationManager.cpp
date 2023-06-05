@@ -10,7 +10,6 @@ SimulationManager::SimulationManager(int width, int height, const char* title, d
     this->paused = false;
     this->draw_quadtree = false;
 
-    // Set the boundaries of the QuadTree based on the window size
     double xmin = 0.0;
     double ymin = 0.0;
     double xmax = static_cast<double>(width);
@@ -105,7 +104,7 @@ void SimulationManager::draw_simulation()
     if (this->draw_quadtree)
     {
         this->tree->get_bounding_rectangles(this->bounding_boxes);
-
+#pragma omp parallel for
         for (sf::RectangleShape* rectangle : bounding_boxes)
         {
             this->window->draw(rectangle);

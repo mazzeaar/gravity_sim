@@ -76,7 +76,7 @@ void QuadTree::subdivide()
 
 void QuadTree::compute_force(Body* body, double theta, double G)
 {
-    double epsilon = 0.1;
+    double epsilon = 0.2;
 
     if (this->body == nullptr || this->body == body)
     {
