@@ -14,7 +14,9 @@ private:
     std::vector<Body*> bodies;
     QuadTree* tree;
     double G, theta, dt;
+
     bool paused;
+    bool draw_quadtree;
 
     Window* window;
 

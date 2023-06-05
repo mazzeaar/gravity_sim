@@ -32,6 +32,11 @@ void Window::draw(sf::Shape* shape)
     this->window->draw(*shape);
 }
 
+void Window::draw(sf::RectangleShape* shape)
+{
+    this->window->draw(*shape);
+}
+
 void Window::display()
 {
     this->window->display();
@@ -57,7 +62,7 @@ bool Window::is_open()
     return this->window->isOpen();
 }
 
-void Window::handle_events()
+void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree)
 {
     sf::Event event;
     while (this->window->pollEvent(event))
@@ -70,7 +75,11 @@ void Window::handle_events()
         {
             if (event.key.code == sf::Keyboard::Space)
             {
-                this->paused = !this->paused;
+                toggle_pause = !toggle_pause;
+            }
+            else if (event.key.code == sf::Keyboard::Q)
+            {
+                toggle_draw_quadtree = !toggle_draw_quadtree;
             }
             else if (event.key.code == sf::Keyboard::Escape)
             {

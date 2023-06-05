@@ -76,6 +76,8 @@ void QuadTree::subdivide()
 
 void QuadTree::compute_force(Body* body, double theta, double G)
 {
+    double epsilon = 0.1;
+
     if (this->body == nullptr || this->body == body)
     {
         return;
@@ -84,11 +86,11 @@ void QuadTree::compute_force(Body* body, double theta, double G)
     Vec2 direction = this->center_of_mass - body->pos;
     double distance = direction.length();
 
-    double s = this->bottom_right.x - this->top_left.x; // size of the quadrant
+    double quadrant_size = this->bottom_right.x - this->top_left.x;
 
-    if (s / distance < theta || this->NW == nullptr)
+    if (quadrant_size / distance < theta || this->NW == nullptr)
     {
-        double magnitude = G * this->mass * body->mass / (distance * distance * distance);
+        double magnitude = G * this->mass * body->mass / (distance * distance + epsilon * epsilon);
         Vec2 force = direction * magnitude;
         body->apply_force(force); // Accumulate the force on the body
     }
@@ -103,19 +105,23 @@ void QuadTree::compute_force(Body* body, double theta, double G)
 
 void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double dt)
 {
-    // Compute forces for each body
-    for (Body* body : bodies)
+    // Compute forces for each body  
+#pragma omp parallel for
+    for (int i = 0; i < bodies.size(); i++)
     {
-        body->reset_force(); // Reset the accumulated force for each body
+        Body* body = bodies[i];
+        body->reset_force();
         this->compute_force(body, theta, G);
     }
 
-    // Update positions and velocities for each body
-    for (Body* body : bodies)
+#pragma omp parallel for
+    for (int i = 0; i < bodies.size(); i++)
     {
+        Body* body = bodies[i];
         body->update(dt);
     }
 }
+
 
 void QuadTree::add_bodys(std::vector<Body*>& bodies)
 {
@@ -125,7 +131,7 @@ void QuadTree::add_bodys(std::vector<Body*>& bodies)
     }
 }
 
-std::vector<sf::RectangleShape> QuadTree::getBoundingRectangles() const
+std::vector<sf::RectangleShape> QuadTree::get_bounding_rectangles() const
 {
     std::vector<sf::RectangleShape> rectangles;
 
@@ -139,22 +145,22 @@ std::vector<sf::RectangleShape> QuadTree::getBoundingRectangles() const
 
     if (NW != nullptr)
     {
-        std::vector<sf::RectangleShape> nwRectangles = NW->getBoundingRectangles();
+        std::vector<sf::RectangleShape> nwRectangles = NW->get_bounding_rectangles();
         rectangles.insert(rectangles.end(), nwRectangles.begin(), nwRectangles.end());
     }
     if (NE != nullptr)
     {
-        std::vector<sf::RectangleShape> neRectangles = NE->getBoundingRectangles();
+        std::vector<sf::RectangleShape> neRectangles = NE->get_bounding_rectangles();
         rectangles.insert(rectangles.end(), neRectangles.begin(), neRectangles.end());
     }
     if (SW != nullptr)
     {
-        std::vector<sf::RectangleShape> swRectangles = SW->getBoundingRectangles();
+        std::vector<sf::RectangleShape> swRectangles = SW->get_bounding_rectangles();
         rectangles.insert(rectangles.end(), swRectangles.begin(), swRectangles.end());
     }
     if (SE != nullptr)
     {
-        std::vector<sf::RectangleShape> seRectangles = SE->getBoundingRectangles();
+        std::vector<sf::RectangleShape> seRectangles = SE->get_bounding_rectangles();
         rectangles.insert(rectangles.end(), seRectangles.begin(), seRectangles.end());
     }
 

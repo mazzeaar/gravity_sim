@@ -7,6 +7,9 @@ SimulationManager::SimulationManager(int width, int height, const char* title, d
     this->theta = theta;
     this->dt = dt;
 
+    this->paused = false;
+    this->draw_quadtree = false;
+
     // Set the boundaries of the QuadTree based on the window size
     double xmin = 0.0;
     double ymin = 0.0;
@@ -28,10 +31,12 @@ void SimulationManager::start()
     while (this->window->is_open())
     {
         handle_window_events();
+
         if (!paused)
         {
             update_simulation();
         }
+
         draw_simulation();
     }
 }
@@ -97,6 +102,17 @@ void SimulationManager::draw_simulation()
 {
     this->window->clear();
 
+    if (this->draw_quadtree)
+    {
+        std::vector<sf::RectangleShape> rectangles = this->tree->get_bounding_rectangles();
+
+        for (sf::RectangleShape rectangle : rectangles)
+        {
+            this->window->draw(&rectangle);
+        }
+    }
+
+#pragma omp parallel for
     for (Body* body : this->bodies)
     {
         this->window->circle->setRadius(body->mass);
@@ -113,13 +129,5 @@ void SimulationManager::draw_simulation()
 
 void SimulationManager::handle_window_events()
 {
-    this->window->handle_events();
-    if (this->window->paused)
-    {
-        this->paused = true;
-    }
-    else
-    {
-        this->paused = false;
-    }
+    this->window->handle_events(this->paused, this->draw_quadtree);
 }

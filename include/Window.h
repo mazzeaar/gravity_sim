@@ -22,7 +22,10 @@ public:
     ~Window();
 
     void clear();
+
     void draw(sf::Shape* shape);
+    void draw(sf::RectangleShape* shape);
+
     void display();
     void close();
 
@@ -31,7 +34,7 @@ public:
     int get_width();
     int get_height();
 
-    void handle_events();
+    void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree);
 };
 
 #endif // WINDOW_H
