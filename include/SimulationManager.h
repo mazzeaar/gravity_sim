@@ -12,6 +12,8 @@
 class SimulationManager {
 private:
     std::vector<Body*> bodies;
+    std::vector<sf::RectangleShape*> bounding_boxes;
+
     QuadTree* tree;
     double G, theta, dt;
 

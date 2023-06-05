@@ -32,7 +32,7 @@ public:
 
     void update(std::vector<Body*>& bodies, double theta, double G, double dt);
 
-    std::vector<sf::RectangleShape> get_bounding_rectangles() const;
+    void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
 };
 
 #endif // QUADTREE_H

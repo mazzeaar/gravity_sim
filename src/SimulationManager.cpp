@@ -104,11 +104,11 @@ void SimulationManager::draw_simulation()
 
     if (this->draw_quadtree)
     {
-        std::vector<sf::RectangleShape> rectangles = this->tree->get_bounding_rectangles();
+        this->tree->get_bounding_rectangles(this->bounding_boxes);
 
-        for (sf::RectangleShape rectangle : rectangles)
+        for (sf::RectangleShape* rectangle : bounding_boxes)
         {
-            this->window->draw(&rectangle);
+            this->window->draw(rectangle);
         }
     }
 
