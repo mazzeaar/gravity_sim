@@ -103,8 +103,9 @@ void SimulationManager::draw_simulation()
 
     if (this->draw_quadtree)
     {
+        this->bounding_boxes.clear();
+
         this->tree->get_bounding_rectangles(this->bounding_boxes);
-#pragma omp parallel for
         for (sf::RectangleShape* rectangle : bounding_boxes)
         {
             this->window->draw(rectangle);

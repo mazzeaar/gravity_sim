@@ -105,15 +105,12 @@ void QuadTree::compute_force(Body* body, double theta, double G)
 
 void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double dt)
 {
-    // Compute forces for each body  
-#pragma omp parallel for
     for (int i = 0; i < bodies.size(); i++)
     {
         Body* body = bodies[i];
         body->reset_force();
         this->compute_force(body, theta, G);
     }
-
 #pragma omp parallel for
     for (int i = 0; i < bodies.size(); i++)
     {
@@ -133,39 +130,32 @@ void QuadTree::add_bodys(std::vector<Body*>& bodies)
 
 void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
 {
-    rectangles.clear();
 
     sf::RectangleShape* rect = new sf::RectangleShape(); // Create a dynamic object
     rect->setSize(sf::Vector2f(bottom_right.x - top_left.x, bottom_right.y - top_left.y));
     rect->setPosition(sf::Vector2f(top_left.x, top_left.y));
     rect->setFillColor(sf::Color::Transparent);
     rect->setOutlineColor(sf::Color::Green);
-    rect->setOutlineThickness(1.0f);
-    rectangles.push_back(rect); // Store the pointer to the object
+    rect->setOutlineThickness(0.5f);
+    rectangles.push_back(rect);
 
     if (NW != nullptr)
     {
-        std::vector<sf::RectangleShape*> nwRectangles;
-        NW->get_bounding_rectangles(nwRectangles);
-        rectangles.insert(rectangles.end(), nwRectangles.begin(), nwRectangles.end());
-    }
-    if (NE != nullptr)
-    {
-        std::vector<sf::RectangleShape*> neRectangles;
-        NE->get_bounding_rectangles(neRectangles);
-        rectangles.insert(rectangles.end(), neRectangles.begin(), neRectangles.end());
-    }
-    if (SW != nullptr)
-    {
-        std::vector<sf::RectangleShape*> swRectangles;
-        SW->get_bounding_rectangles(swRectangles);
-        rectangles.insert(rectangles.end(), swRectangles.begin(), swRectangles.end());
-    }
-    if (SE != nullptr)
-    {
-        std::vector<sf::RectangleShape*> seRectangles;
-        SE->get_bounding_rectangles(seRectangles);
-        rectangles.insert(rectangles.end(), seRectangles.begin(), seRectangles.end());
+        //std::vector<sf::RectangleShape*> nwRectangles;
+        NW->get_bounding_rectangles(rectangles);
+        //rectangles.insert(rectangles.end(), nwRectangles.begin(), nwRectangles.end());
+
+        //std::vector<sf::RectangleShape*> neRectangles;
+        NE->get_bounding_rectangles(rectangles);
+        //rectangles.insert(rectangles.end(), neRectangles.begin(), neRectangles.end());
+
+        //std::vector<sf::RectangleShape*> swRectangles;
+        SW->get_bounding_rectangles(rectangles);
+        //rectangles.insert(rectangles.end(), swRectangles.begin(), swRectangles.end());
+
+        //std::vector<sf::RectangleShape*> seRectangles;
+        SE->get_bounding_rectangles(rectangles);
+        //rectangles.insert(rectangles.end(), seRectangles.begin(), seRectangles.end());
     }
 }
 
