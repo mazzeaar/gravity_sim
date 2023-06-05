@@ -1,6 +1,7 @@
 #include "SimulationManager.h"
 
-SimulationManager::SimulationManager(int width, int height, const char* title, double G, double theta, double dt) {
+SimulationManager::SimulationManager(int width, int height, const char* title, double G, double theta, double dt)
+{
     this->window = new Window(width, height, title);
     this->G = G;
     this->theta = theta;
@@ -16,38 +17,19 @@ SimulationManager::SimulationManager(int width, int height, const char* title, d
 }
 
 
-SimulationManager::~SimulationManager() {
+SimulationManager::~SimulationManager()
+{
     delete this->window;
     delete this->tree;
 }
 
 void SimulationManager::start() {
     while (this->window->is_open()) {
-
-        this->window->handle_events();
-
-        this->window->clear();
-
-        this->tree->add_bodys(this->bodies);
-        this->tree->update(this->bodies, this->theta, this->G, this->dt);
-
-        for (Body* body : this->bodies) {
-            this->window->circle->setRadius(body->mass);
-            this->window->circle->setPosition(body->pos.x - body->mass, body->pos.y - body->mass);
-            this->window->circle->setFillColor(sf::Color::White);
-            this->window->draw(this->window->circle);
+        handle_window_events();
+        if (!paused) {
+            update_simulation();
         }
-
-        std::vector<sf::RectangleShape> rectangles = this->tree->getBoundingRectangles();
-        for (sf::RectangleShape rect : rectangles) {
-            this->window->draw(&rect);
-        }
-
-        this->window->display();
-
-        delete this->tree;
-        this->tree = new QuadTree(0.0, 0.0, (double) this->window->get_width(), (double) this->window->get_height());
-
+        draw_simulation();
     }
 }
 
@@ -55,41 +37,81 @@ void SimulationManager::stop() {
     this->window->close();
 }
 
-void SimulationManager::set_G(double G) {
+void SimulationManager::pause()
+{
+    this->paused = true;
+}
+
+void SimulationManager::resume()
+{
+    this->paused = false;
+}
+
+void SimulationManager::set_G(double G)
+{
     this->G = G;
 }
 
-void SimulationManager::set_theta(double theta) {
+void SimulationManager::set_theta(double theta)
+{
     this->theta = theta;
 }
 
-void SimulationManager::add_body(Body* body) {
+void SimulationManager::add_body_at_position(Vec2 position, Vec2 velocity, double mass)
+{
+    Body* new_body = new Body(position, velocity, mass);
+    this->bodies.push_back(new_body);
+    this->tree->insert(new_body);
+}
+
+void SimulationManager::add_body(Body* body)
+{
     this->bodies.push_back(body);
     this->tree->insert(body);
 }
 
-void SimulationManager::add_bodys(std::vector<Body*> bodys) {
+void SimulationManager::add_bodys(std::vector<Body*> bodys)
+{
     for (Body* body : bodys) {
         this->add_body(body);
     }
 }
 
-void SimulationManager::update() {
+void SimulationManager::update_simulation()
+{
     this->tree->add_bodys(this->bodies);
     this->tree->update(this->bodies, this->theta, this->G, this->dt);
 
     for (Body* body : this->bodies) {
         // Update the position based on the calculated forces and time step
         body->pos += body->vel * this->dt;
+    }
+}
 
-        // Draw the body on the window
+void SimulationManager::draw_simulation()
+{
+    this->window->clear();
+
+    for (Body* body : this->bodies) {
         this->window->circle->setRadius(body->mass);
         this->window->circle->setPosition(body->pos.x - body->mass, body->pos.y - body->mass);
         this->window->circle->setFillColor(sf::Color::White);
         this->window->draw(this->window->circle);
     }
 
-    // Clear the tree and create a new one
+    this->window->display();
+
     delete this->tree;
     this->tree = new QuadTree(0.0, 0.0, (double) this->window->get_width(), (double) this->window->get_height());
+}
+
+void SimulationManager::handle_window_events()
+{
+    this->window->handle_events();
+    if (this->window->paused) {
+        this->paused = true;
+    }
+    else {
+        this->paused = false;
+    }
 }

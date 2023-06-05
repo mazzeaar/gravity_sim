@@ -54,5 +54,13 @@ void Window::handle_events() {
         if (event.type == sf::Event::Closed) {
             this->window->close();
         }
+        else if (event.type == sf::Event::KeyPressed) {
+            if (event.key.code == sf::Keyboard::Space) {
+                this->paused = !this->paused;
+            }
+            else if (event.key.code == sf::Keyboard::Escape) {
+                this->window->close();
+            }
+        }
     }
 }

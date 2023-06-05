@@ -16,6 +16,8 @@ public:
     sf::CircleShape* circle;
     sf::RectangleShape* rect;
 
+    bool paused;
+
     Window(int width, int height, const char* title);
     ~Window();
 

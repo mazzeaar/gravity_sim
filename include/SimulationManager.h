@@ -14,6 +14,7 @@ private:
     std::vector<Body*> bodies;
     QuadTree* tree;
     double G, theta, dt;
+    bool paused;
 
     Window* window;
 
@@ -25,14 +26,18 @@ public:
     void pause();
     void resume();
     void stop();
-    void update();
+
+    void update_simulation();
+    void draw_simulation();
 
     void set_G(double G);
     void set_theta(double theta);
 
     void add_body(Body* body);
     void add_bodys(std::vector<Body*> bodys);
+    void add_body_at_position(Vec2 position, Vec2 velocity, double mass);
 
+    void handle_window_events();
 };
 
 #endif // SIMULATION_MANAGER_H
