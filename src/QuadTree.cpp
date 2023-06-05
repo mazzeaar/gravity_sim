@@ -16,7 +16,8 @@ QuadTree::QuadTree(Vec2 top_left, Vec2 bottom_right)
 }
 
 QuadTree::QuadTree(double xmin, double ymin, double xmax, double ymax) :
-    QuadTree(Vec2(xmin, ymin), Vec2(xmax, ymax)) {}
+    QuadTree(Vec2(xmin, ymin), Vec2(xmax, ymax))
+{}
 
 QuadTree::~QuadTree()
 {
@@ -34,24 +35,28 @@ bool QuadTree::contains(Body* body)
 
 void QuadTree::insert(Body*& body)
 {
-    if (!this->contains(body)) {
+    if (!this->contains(body))
+    {
         //delete body;
         return;
     }
 
-    if (this->body == nullptr) {
+    if (this->body == nullptr)
+    {
         this->body = body;
         center_of_mass = body->pos;
         mass = body->mass;
     }
-    else {
+    else
+    {
         if (NW == nullptr) this->subdivide();
 
         if (NW->contains(body)) NW->insert(body);
         else if (NE->contains(body)) NE->insert(body);
         else if (SW->contains(body)) SW->insert(body);
         else if (SE->contains(body)) SE->insert(body);
-        else {
+        else
+        {
             std::cout << "Body out of bounds" << std::endl;
             return;
         }
@@ -71,7 +76,8 @@ void QuadTree::subdivide()
 
 void QuadTree::compute_force(Body* body, double theta, double G)
 {
-    if (this->body == nullptr || this->body == body) {
+    if (this->body == nullptr || this->body == body)
+    {
         return;
     }
 
@@ -80,12 +86,14 @@ void QuadTree::compute_force(Body* body, double theta, double G)
 
     double s = this->bottom_right.x - this->top_left.x; // size of the quadrant
 
-    if (s / distance < theta || this->NW == nullptr) {
+    if (s / distance < theta || this->NW == nullptr)
+    {
         double magnitude = G * this->mass * body->mass / (distance * distance * distance);
         Vec2 force = direction * magnitude;
         body->apply_force(force); // Accumulate the force on the body
     }
-    else {
+    else
+    {
         NW->compute_force(body, theta, G);
         NE->compute_force(body, theta, G);
         SW->compute_force(body, theta, G);
@@ -96,25 +104,29 @@ void QuadTree::compute_force(Body* body, double theta, double G)
 void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double dt)
 {
     // Compute forces for each body
-    for (Body* body : bodies) {
+    for (Body* body : bodies)
+    {
         body->reset_force(); // Reset the accumulated force for each body
         this->compute_force(body, theta, G);
     }
 
     // Update positions and velocities for each body
-    for (Body* body : bodies) {
+    for (Body* body : bodies)
+    {
         body->update(dt);
     }
 }
 
 void QuadTree::add_bodys(std::vector<Body*>& bodies)
 {
-    for (Body* body : bodies) {
+    for (Body* body : bodies)
+    {
         this->insert(body);
     }
 }
 
-std::vector<sf::RectangleShape> QuadTree::getBoundingRectangles() const {
+std::vector<sf::RectangleShape> QuadTree::getBoundingRectangles() const
+{
     std::vector<sf::RectangleShape> rectangles;
 
     sf::RectangleShape rect;
@@ -125,19 +137,23 @@ std::vector<sf::RectangleShape> QuadTree::getBoundingRectangles() const {
     rect.setOutlineThickness(1.0f);
     rectangles.push_back(rect);
 
-    if (NW != nullptr) {
+    if (NW != nullptr)
+    {
         std::vector<sf::RectangleShape> nwRectangles = NW->getBoundingRectangles();
         rectangles.insert(rectangles.end(), nwRectangles.begin(), nwRectangles.end());
     }
-    if (NE != nullptr) {
+    if (NE != nullptr)
+    {
         std::vector<sf::RectangleShape> neRectangles = NE->getBoundingRectangles();
         rectangles.insert(rectangles.end(), neRectangles.begin(), neRectangles.end());
     }
-    if (SW != nullptr) {
+    if (SW != nullptr)
+    {
         std::vector<sf::RectangleShape> swRectangles = SW->getBoundingRectangles();
         rectangles.insert(rectangles.end(), swRectangles.begin(), swRectangles.end());
     }
-    if (SE != nullptr) {
+    if (SE != nullptr)
+    {
         std::vector<sf::RectangleShape> seRectangles = SE->getBoundingRectangles();
         rectangles.insert(rectangles.end(), seRectangles.begin(), seRectangles.end());
     }

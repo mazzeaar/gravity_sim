@@ -23,17 +23,21 @@ SimulationManager::~SimulationManager()
     delete this->tree;
 }
 
-void SimulationManager::start() {
-    while (this->window->is_open()) {
+void SimulationManager::start()
+{
+    while (this->window->is_open())
+    {
         handle_window_events();
-        if (!paused) {
+        if (!paused)
+        {
             update_simulation();
         }
         draw_simulation();
     }
 }
 
-void SimulationManager::stop() {
+void SimulationManager::stop()
+{
     this->window->close();
 }
 
@@ -72,7 +76,8 @@ void SimulationManager::add_body(Body* body)
 
 void SimulationManager::add_bodys(std::vector<Body*> bodys)
 {
-    for (Body* body : bodys) {
+    for (Body* body : bodys)
+    {
         this->add_body(body);
     }
 }
@@ -82,8 +87,8 @@ void SimulationManager::update_simulation()
     this->tree->add_bodys(this->bodies);
     this->tree->update(this->bodies, this->theta, this->G, this->dt);
 
-    for (Body* body : this->bodies) {
-        // Update the position based on the calculated forces and time step
+    for (Body* body : this->bodies)
+    {
         body->pos += body->vel * this->dt;
     }
 }
@@ -92,7 +97,8 @@ void SimulationManager::draw_simulation()
 {
     this->window->clear();
 
-    for (Body* body : this->bodies) {
+    for (Body* body : this->bodies)
+    {
         this->window->circle->setRadius(body->mass);
         this->window->circle->setPosition(body->pos.x - body->mass, body->pos.y - body->mass);
         this->window->circle->setFillColor(sf::Color::White);
@@ -108,10 +114,12 @@ void SimulationManager::draw_simulation()
 void SimulationManager::handle_window_events()
 {
     this->window->handle_events();
-    if (this->window->paused) {
+    if (this->window->paused)
+    {
         this->paused = true;
     }
-    else {
+    else
+    {
         this->paused = false;
     }
 }
