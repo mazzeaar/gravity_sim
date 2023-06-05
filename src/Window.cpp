@@ -37,6 +37,11 @@ void Window::draw(sf::RectangleShape* shape)
     this->window->draw(*shape);
 }
 
+void Window::draw(sf::Vertex* line, int size, sf::PrimitiveType type)
+{
+    this->window->draw(line, size, type);
+}
+
 void Window::display()
 {
     this->window->display();
@@ -62,7 +67,7 @@ bool Window::is_open()
     return this->window->isOpen();
 }
 
-void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree)
+void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors)
 {
     sf::Event event;
     if (this->window->pollEvent(event))
@@ -84,6 +89,10 @@ void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree)
             else if (event.key.code == sf::Keyboard::Escape)
             {
                 this->window->close();
+            }
+            else if (event.key.code == sf::Keyboard::V)
+            {
+                toggle_draw_vectors = !toggle_draw_vectors;
             }
         }
     }

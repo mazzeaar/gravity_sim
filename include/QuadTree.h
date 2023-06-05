@@ -12,6 +12,7 @@ private:
 
     Vec2 center_of_mass;
     double mass;
+    double pressure_threshold;
 
     Body* body; // NULL if no body contained
     QuadTree* NW, * NE, * SW, * SE; // children
@@ -26,6 +27,8 @@ public:
     void clear();
 
     bool contains(Body* body);
+    bool is_leaf();
+
     void subdivide();
 
     void add_bodys(std::vector<Body*>& bodies);

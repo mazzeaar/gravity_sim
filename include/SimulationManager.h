@@ -19,6 +19,7 @@ private:
 
     bool paused;
     bool draw_quadtree;
+    bool draw_vectors;
 
     Window* window;
 

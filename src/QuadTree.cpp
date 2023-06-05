@@ -33,6 +33,11 @@ bool QuadTree::contains(Body* body)
         body->pos.y >= top_left.y && body->pos.y <= bottom_right.y);
 }
 
+bool QuadTree::is_leaf()
+{
+    return (NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr);
+}
+
 void QuadTree::insert(Body*& body)
 {
     if (!this->contains(body))
@@ -96,6 +101,7 @@ void QuadTree::compute_force(Body* body, double theta, double G)
     }
     else
     {
+        body->pressure += 1;
         NW->compute_force(body, theta, G);
         NE->compute_force(body, theta, G);
         SW->compute_force(body, theta, G);
@@ -118,7 +124,6 @@ void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double
         body->update(dt);
     }
 }
-
 
 void QuadTree::add_bodys(std::vector<Body*>& bodies)
 {

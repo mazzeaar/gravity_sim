@@ -25,6 +25,7 @@ public:
 
     void draw(sf::Shape* shape);
     void draw(sf::RectangleShape* shape);
+    void draw(sf::Vertex* line, int size, sf::PrimitiveType type);
 
     void display();
     void close();
@@ -34,7 +35,7 @@ public:
     int get_width();
     int get_height();
 
-    void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree);
+    void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors);
 };
 
 #endif // WINDOW_H

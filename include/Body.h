@@ -11,9 +11,13 @@ public:
     Vec2 acc;
 
     double mass;
+    double pressure;
 
     Body();
     Body(Vec2 position, Vec2 velocity, double mass);
+
+    double get_pressure();
+    void reset_pressure();
 
     void apply_force(Vec2 force);
     void reset_force();
