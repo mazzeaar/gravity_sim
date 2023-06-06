@@ -22,6 +22,10 @@ private:
     bool paused;
     bool draw_quadtree;
     bool draw_vectors;
+    bool debug;
+
+    long long unsigned total_calculations;
+    long unsigned calculations_per_frame;
 
     Window* window;
 
@@ -34,7 +38,7 @@ public:
     void resume();
     void stop();
 
-    void update_simulation();
+    void update_simulation(unsigned long& calculations_per_frame);
     void draw_simulation();
 
     void set_G(double G);
@@ -45,6 +49,7 @@ public:
     void add_body_at_position(Vec2 position, Vec2 velocity, double mass);
 
     void handle_window_events();
+    void print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case);
 };
 
 #endif // SIMULATION_MANAGER_H

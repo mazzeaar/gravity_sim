@@ -3,7 +3,7 @@
 #include "Vec2.h"
 
 const double G = 6.67408e-2;
-const double theta = 1.5;
+const double theta = 3.0;
 const double dt = 0.1;
 const unsigned body_count = 10000;
 
@@ -16,19 +16,7 @@ int main()
 
     std::vector<Body*> bodies;
     double total_mass = 0.0;
-    // circle
 
-    for (int i = 0; i < body_count; ++i)
-    {
-        double angle = (double) i / body_count * 2 * M_PI;
-        Vec2 pos = Vec2(width / 2 + cos(angle) * width / 4, height / 2 + sin(angle) * height / 4);
-        Vec2 vel = Vec2(-sin(angle), cos(angle)) * 20;
-        double mass = rand() % 5 + 2;
-        total_mass += mass;
-        bodies.push_back(new Body(pos, vel, mass));
-    }
-    /*
-    // smaller circle
     for (int i = 0; i < body_count; ++i)
     {
         double angle = (double) i / body_count * 2 * M_PI;
@@ -38,12 +26,10 @@ int main()
         total_mass += mass;
         bodies.push_back(new Body(pos, vel, mass));
     }
-    */
 
-    // random
     for (int i = 0; i < body_count; ++i)
     {
-        Vec2 pos = Vec2(rand() % width, rand() % height);
+        Vec2 pos = Vec2(rand() % (width / 2) + width / 4, rand() % (height / 2) + height / 4);
 
         // velocity is perpendicular to the vector from the center of the screen to the body, clockwise
         Vec2 vel = Vec2(pos.y - height / 2, width / 2 - pos.x);
@@ -54,10 +40,6 @@ int main()
         total_mass += mass;
         bodies.push_back(new Body(pos, vel, mass));
     }
-
-    //double massive_mass = total_mass;
-    // total_mass += massive_mass;
-    //bodies.push_back(new Body(Vec2(width / 2, height / 2), Vec2(0.0, 0.0), massive_mass));
 
     std::cout << "running with " << bodies.size() << " bodies" << std::endl;
     std::cout << "total mass: " << total_mass << std::endl;

@@ -3,8 +3,10 @@
 
 #include "Vec2.h"
 #include "Body.h"
+
 #include <iostream>
 #include <SFML/Graphics.hpp>
+#include <unordered_map>
 
 class QuadTree {
 private:
@@ -17,7 +19,7 @@ private:
     Body* body; // NULL if no body contained
     QuadTree* NW, * NE, * SW, * SE; // children
 
-    void compute_force(Body* body, double theta, double G);
+    void compute_force(Body* body, double theta, double G, unsigned long& calculations_per_frame);
 
 public:
     QuadTree(Vec2 top_left, Vec2 bottom_right);
@@ -34,7 +36,7 @@ public:
     void add_bodys(std::vector<Body*>& bodies);
     void insert(Body*& body);
 
-    void update(std::vector<Body*>& bodies, double theta, double G, double dt);
+    void update(std::vector<Body*>& bodies, double theta, double G, double dt, unsigned long& calculations_per_frame);
 
     void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
 };

@@ -1,10 +1,8 @@
 #include "QuadTree.h"
 
-QuadTree::QuadTree(Vec2 top_left, Vec2 bottom_right)
+QuadTree::QuadTree(Vec2 top_left, Vec2 bottom_right) :
+    top_left(top_left), bottom_right(bottom_right)
 {
-    this->top_left = top_left;
-    this->bottom_right = bottom_right;
-
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
 
@@ -42,7 +40,7 @@ void QuadTree::insert(Body*& body)
 {
     if (!this->contains(body))
     {
-        //delete body;
+        // TODO - delete body
         return;
     }
 
@@ -62,7 +60,7 @@ void QuadTree::insert(Body*& body)
         else if (SE->contains(body)) SE->insert(body);
         else
         {
-            std::cout << "Body out of bounds" << std::endl;
+            std::cout << "Body out of bounds :(" << std::endl;
             return;
         }
 
@@ -79,9 +77,9 @@ void QuadTree::subdivide()
     this->SE = new QuadTree((top_left + bottom_right) / 2.0, bottom_right);
 }
 
-void QuadTree::compute_force(Body* body, double theta, double G)
+void QuadTree::compute_force(Body* body, double theta, double G, unsigned long& calculations_per_frame)
 {
-    double epsilon = 0.5; // softening factor, else force goes to infinity when dist == smol
+    double epsilon = 0.5; // softening factor to prevent force go brrrrr
 
     if (this->body == nullptr || this->body == body)
     {
@@ -95,27 +93,28 @@ void QuadTree::compute_force(Body* body, double theta, double G)
 
     if (quadrant_size / distance < theta || this->NW == nullptr)
     {
+        ++calculations_per_frame;
         double magnitude = G * this->mass * body->mass / (distance * distance + epsilon * epsilon);
         Vec2 force = direction * magnitude;
-        body->apply_force(force); // Accumulate the force on the body
+        body->apply_force(force);
     }
     else
     {
-        body->pressure += 1;
-        NW->compute_force(body, theta, G);
-        NE->compute_force(body, theta, G);
-        SW->compute_force(body, theta, G);
-        SE->compute_force(body, theta, G);
+        body->pressure += 1; // wonky ass shit
+        NW->compute_force(body, theta, G, calculations_per_frame);
+        NE->compute_force(body, theta, G, calculations_per_frame);
+        SW->compute_force(body, theta, G, calculations_per_frame);
+        SE->compute_force(body, theta, G, calculations_per_frame);
     }
 }
 
-void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double dt)
+void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
     for (int i = 0; i < bodies.size(); i++)
     {
         Body* body = bodies[i];
         body->reset_force();
-        this->compute_force(body, theta, G);
+        this->compute_force(body, theta, G, calculations_per_frame);
     }
 #pragma omp parallel for
     for (int i = 0; i < bodies.size(); i++)

@@ -16,6 +16,8 @@ SimulationManager::SimulationManager(int width, int height, const char* title, d
     double ymax = static_cast<double>(height);
 
     this->tree = new QuadTree(xmin, ymin, xmax, ymax);
+
+    this->total_calculations = 0;
 }
 
 
@@ -27,6 +29,10 @@ SimulationManager::~SimulationManager()
 
 void SimulationManager::start()
 {
+    double worst_case = bodies.size() * bodies.size();
+    double best_case = bodies.size() * log2(bodies.size());
+    unsigned long steps = 0;
+
     while (this->window->is_open())
     {
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -34,16 +40,20 @@ void SimulationManager::start()
 
         if (!paused)
         {
-            update_simulation();
+            update_simulation(calculations_per_frame);
+
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            ++steps;
+            total_calculations += calculations_per_frame;
+            if (this->debug)
+            {
+                print_debug_info(steps, std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0, calculations_per_frame, worst_case, best_case);
+            }
+            calculations_per_frame = 0;
         }
 
         draw_simulation();
-
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        double elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0;
-
-        std::cout << std::left << std::setw(4) << std::setprecision(3) << 1e3 * 1.0 / elapsed_time << " fps | ";
-        std::cout << std::left << std::setw(4) << std::setprecision(3) << (elapsed_time / 1e3) << " spf\n";
     }
 }
 
@@ -93,10 +103,10 @@ void SimulationManager::add_bodys(std::vector<Body*> bodys)
     }
 }
 
-void SimulationManager::update_simulation()
+void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
     this->tree->add_bodys(this->bodies);
-    this->tree->update(this->bodies, this->theta, this->G, this->dt);
+    this->tree->update(this->bodies, this->theta, this->G, this->dt, calculations_per_frame);
 
     for (Body* body : this->bodies)
     {
@@ -176,5 +186,21 @@ void SimulationManager::draw_simulation()
 
 void SimulationManager::handle_window_events()
 {
-    this->window->handle_events(this->paused, this->draw_quadtree, this->draw_vectors);
+    this->window->handle_events(this->paused, this->draw_quadtree, this->draw_vectors, this->debug);
+}
+
+void SimulationManager::print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case)
+{
+    double current_ratio_worst = worst_case / calculations_per_frame;
+    double current_ratio_best = best_case / calculations_per_frame;
+
+    std::cout << "########################################" << std::endl;
+    std::cout << std::left << std::setw(20) << "STEP: " << steps << std::endl;
+    std::cout << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e3 * 1.0 / elapsed_time << std::endl;
+    std::cout << std::left << std::setw(20) << "spf: " << std::fixed << std::setprecision(3) << (elapsed_time / 1e3) << " seconds" << std::endl;
+    std::cout << std::left << std::setw(20) << "calc per frame: " << calculations_per_frame << std::endl;
+    std::cout << std::left << std::setw(20) << "total calc: " << total_calculations << std::endl;
+    std::cout << std::left << std::setw(20) << "worst case: " << std::fixed << std::setprecision(2) << current_ratio_worst * 100.0 << "% " << ((current_ratio_worst > 1.0) ? "faster" : "slower") << std::endl;
+    std::cout << std::left << std::setw(20) << "best case: " << std::fixed << std::setprecision(2) << current_ratio_best * 100.0 << "% " << ((current_ratio_best > 1.0) ? "faster" : "slower") << std::endl;
+    std::cout << "########################################" << std::endl << std::endl;
 }

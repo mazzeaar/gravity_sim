@@ -35,7 +35,7 @@ public:
     int get_width();
     int get_height();
 
-    void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors);
+    void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors, bool& toggle_debug);
 };
 
 #endif // WINDOW_H

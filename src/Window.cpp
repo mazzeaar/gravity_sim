@@ -6,7 +6,10 @@ Window::Window(int width, int height, const char* title)
     this->height = height;
 
     this->window = new sf::RenderWindow(sf::VideoMode(width, height), title);
-    this->window->setFramerateLimit(60);
+    this->window->setVerticalSyncEnabled(true);
+    this->window->setPosition(sf::Vector2i(0, 0));
+
+    this->window->setFramerateLimit(0);
 
     this->circle = new sf::CircleShape();
     this->rect = new sf::RectangleShape();
@@ -67,7 +70,7 @@ bool Window::is_open()
     return this->window->isOpen();
 }
 
-void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors)
+void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors, bool& toggle_debug)
 {
     sf::Event event;
     if (this->window->pollEvent(event))
@@ -93,6 +96,10 @@ void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool&
             else if (event.key.code == sf::Keyboard::V)
             {
                 toggle_draw_vectors = !toggle_draw_vectors;
+            }
+            else if (event.key.code == sf::Keyboard::D)
+            {
+                toggle_debug = !toggle_debug;
             }
         }
     }
