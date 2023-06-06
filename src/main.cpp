@@ -5,7 +5,7 @@
 const double G = 6.67408e-2;
 const double theta = 3.0;
 const double dt = 0.1;
-const unsigned body_count = 10000;
+const unsigned body_count = 50000;
 
 const int width = 2200;
 const int height = 2200;

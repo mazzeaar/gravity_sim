@@ -20,7 +20,7 @@ public:
     double get_pressure();
     void reset_pressure();
 
-    void apply_force(Vec2 force);
+    void apply_force(Vec2& force);
     void reset_force();
 
     void update(double dt);

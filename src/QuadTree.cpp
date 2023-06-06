@@ -91,6 +91,11 @@ void QuadTree::compute_force(Body* body, double theta, double G, unsigned long& 
 
     double quadrant_size = this->bottom_right.x - this->top_left.x;
 
+    if (distance < body->pressure)
+    {
+        body->pressure = distance;
+    }
+
     if (quadrant_size / distance < theta || this->NW == nullptr)
     {
         ++calculations_per_frame;
@@ -100,7 +105,6 @@ void QuadTree::compute_force(Body* body, double theta, double G, unsigned long& 
     }
     else
     {
-        body->pressure += 1; // wonky ass shit
         NW->compute_force(body, theta, G, calculations_per_frame);
         NE->compute_force(body, theta, G, calculations_per_frame);
         SW->compute_force(body, theta, G, calculations_per_frame);

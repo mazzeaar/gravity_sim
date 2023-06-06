@@ -2,22 +2,22 @@
 
 Body::Body()
 {
-    pos = Vec2(0, 0);
-    vel = Vec2(0, 0);
-    mass = 0;
-    pressure = 0;
+    this->pos = Vec2(0, 0);
+    this->vel = Vec2(0, 0);
+    this->mass = 0;
+    this->pressure = std::numeric_limits<double>::max();
 }
 
 Body::Body(Vec2 position, Vec2 velocity, double mass)
 {
-    pos = position;
-    vel = velocity;
+    this->pos = position;
+    this->vel = velocity;
     this->mass = mass;
     this->radius = pow(mass, 1.0 / 3.0) * 2.0;
-    pressure = 0.0;
+    this->pressure = std::numeric_limits<double>::max();
 }
 
-void Body::apply_force(Vec2 force)
+void Body::apply_force(Vec2& force)
 {
     acc += force / mass;
 }
@@ -35,10 +35,10 @@ void Body::update(double dt)
 
 double Body::get_pressure()
 {
-    return pressure;
+    return this->pressure;
 }
 
 void Body::reset_pressure()
 {
-    pressure = 0.0;
+    this->pressure = std::numeric_limits<double>::max();
 }

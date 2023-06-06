@@ -118,6 +118,7 @@ void SimulationManager::draw_simulation()
 {
     this->window->clear();
 
+    // draw the quadtree
     if (this->draw_quadtree)
     {
         this->bounding_boxes.clear();
@@ -129,6 +130,7 @@ void SimulationManager::draw_simulation()
         }
     }
 
+    // draw the vectors
     if (this->draw_vectors)
     {
         for (Body* body : this->bodies)
@@ -146,43 +148,43 @@ void SimulationManager::draw_simulation()
         }
     }
 
-    double lowest_pressure = std::numeric_limits<double>::max();
-    double highest_pressure = std::numeric_limits<double>::min();
-
+    // find the min and max distance, gets abused for pressure
+    double min_distance = std::numeric_limits<double>::max();
+    double max_distance = std::numeric_limits<double>::min();
     for (Body* body : this->bodies)
     {
-        double pressure = body->get_pressure();
-        lowest_pressure = std::min(lowest_pressure, pressure);
-        highest_pressure = std::max(highest_pressure, pressure);
+        double distance = body->pressure;
+        min_distance = std::min(min_distance, distance);
+        if (distance != std::numeric_limits<double>::max()) max_distance = std::max(max_distance, distance);
     }
 
+    // draw bodies
     for (Body* body : this->bodies)
     {
-        this->window->circle->setRadius(body->radius);
+        this->window->circle->setRadius(1.0);
         this->window->circle->setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
 
-        double normalized_pressure = (body->get_pressure() - lowest_pressure) / (highest_pressure - lowest_pressure);
-
-        sf::Color startColor(100, 100, 255);
-        sf::Color endColor(255, 0, 0);
-
+        // color depends on distance to nearest body
+        double normalized_pressure = pow((body->pressure - min_distance) / (max_distance - min_distance), 0.5);
+        sf::Color endColor(100, 100, 255);
+        sf::Color startColor(255, 0, 0);
         sf::Color interpolatedColor(
             static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.r + normalized_pressure * endColor.r),
             static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.g + normalized_pressure * endColor.g),
             static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.b + normalized_pressure * endColor.b)
         );
-
-        // interpolatedColor.a = (1 - normalized_pressure) * 100 + 155;
-        interpolatedColor.a = 222;
+        interpolatedColor.a *= 0.6 + (0.4 * normalized_pressure);
 
         this->window->circle->setFillColor(interpolatedColor);
         this->window->draw(this->window->circle);
+
         body->reset_pressure();
     }
 
     this->window->display();
     this->tree->clear();
 }
+
 
 void SimulationManager::handle_window_events()
 {
@@ -195,9 +197,10 @@ void SimulationManager::print_debug_info(unsigned long steps, double elapsed_tim
     double current_ratio_best = best_case / calculations_per_frame;
 
     std::cout << "########################################" << std::endl;
+    std::cout << std::left << std::setw(20) << "particles: " << bodies.size() << std::endl;
+    std::cout << std::left << std::setw(20) << "elapsed time: " << elapsed_time << " ms" << std::endl;
     std::cout << std::left << std::setw(20) << "STEP: " << steps << std::endl;
     std::cout << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e3 * 1.0 / elapsed_time << std::endl;
-    std::cout << std::left << std::setw(20) << "spf: " << std::fixed << std::setprecision(3) << (elapsed_time / 1e3) << " seconds" << std::endl;
     std::cout << std::left << std::setw(20) << "calc per frame: " << calculations_per_frame << std::endl;
     std::cout << std::left << std::setw(20) << "total calc: " << total_calculations << std::endl;
     std::cout << std::left << std::setw(20) << "worst case: " << std::fixed << std::setprecision(2) << current_ratio_worst * 100.0 << "% " << ((current_ratio_worst > 1.0) ? "faster" : "slower") << std::endl;
