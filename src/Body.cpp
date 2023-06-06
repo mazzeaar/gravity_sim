@@ -13,6 +13,7 @@ Body::Body(Vec2 position, Vec2 velocity, double mass)
     pos = position;
     vel = velocity;
     this->mass = mass;
+    this->radius = pow(mass, 1.0 / 3.0) * 2.0;
     pressure = 0.0;
 }
 

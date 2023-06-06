@@ -29,6 +29,7 @@ void SimulationManager::start()
 {
     while (this->window->is_open())
     {
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         handle_window_events();
 
         if (!paused)
@@ -37,6 +38,12 @@ void SimulationManager::start()
         }
 
         draw_simulation();
+
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        double elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0;
+
+        std::cout << std::left << std::setw(4) << std::setprecision(3) << 1e3 * 1.0 / elapsed_time << " fps | ";
+        std::cout << std::left << std::setw(4) << std::setprecision(3) << (elapsed_time / 1e3) << " spf\n";
     }
 }
 
@@ -141,8 +148,8 @@ void SimulationManager::draw_simulation()
 
     for (Body* body : this->bodies)
     {
-        this->window->circle->setRadius(body->mass);
-        this->window->circle->setPosition(body->pos.x - body->mass, body->pos.y - body->mass);
+        this->window->circle->setRadius(body->radius);
+        this->window->circle->setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
 
         double normalized_pressure = (body->get_pressure() - lowest_pressure) / (highest_pressure - lowest_pressure);
 

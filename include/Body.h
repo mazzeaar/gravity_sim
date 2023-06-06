@@ -11,6 +11,7 @@ public:
     Vec2 acc;
 
     double mass;
+    double radius;
     double pressure;
 
     Body();

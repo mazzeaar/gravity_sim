@@ -8,6 +8,8 @@
 
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include <chrono>
+#include <iomanip>
 
 class SimulationManager {
 private:

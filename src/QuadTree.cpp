@@ -81,7 +81,7 @@ void QuadTree::subdivide()
 
 void QuadTree::compute_force(Body* body, double theta, double G)
 {
-    double epsilon = 0.2; // softening factor, else force goes to infinity when dist == smol
+    double epsilon = 0.5; // softening factor, else force goes to infinity when dist == smol
 
     if (this->body == nullptr || this->body == body)
     {
