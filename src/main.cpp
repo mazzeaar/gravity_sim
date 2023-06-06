@@ -7,9 +7,9 @@
 // = TODO: make this a config file!!! =
 // ====================================
 const double G = 6.67408e-2;
-const double theta = 1.8;
+const double theta = 2.4;
 const double dt = 0.1;
-const unsigned body_count = 30000;
+const unsigned body_count = 50000;
 
 const int max_mass = 5;
 
@@ -18,7 +18,7 @@ const int height = 2200;
 
 // ====================================
 
-// TODO clean this mess up
+// TODO clean up this mess
 int main()
 {
     SimulationManager simulation_manager(width, height, "N-Body Simulation", G, theta);
