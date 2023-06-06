@@ -38,13 +38,17 @@ cd gravity_sim
 3. Build the project:
 
 ```bash
-make
+cmake .
 ```
 
 4. Run the simulation:
 
 ```bash
-./gravity_sim
+make run
+```
+or
+```bash
+make && ./gravity_sim
 ```
 
 ## Honorable Mentions
