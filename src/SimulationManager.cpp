@@ -1,7 +1,7 @@
 #include "SimulationManager.h"
 
 SimulationManager::SimulationManager(int width, int height, const char* title, double G, double theta, double dt)
-    : G(G), theta(theta), dt(dt), paused(false), draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
+    : G(G), theta(theta), dt(dt), toggle_paused(false), draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
 {
     window = new Window(width, height, title);
     double xmin = 0.0;
@@ -28,7 +28,7 @@ void SimulationManager::start()
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         handle_window_events();
 
-        if (!paused)
+        if (!toggle_paused)
         {
             update_simulation(calculations_per_frame);
 
@@ -54,12 +54,12 @@ void SimulationManager::stop()
 
 void SimulationManager::pause()
 {
-    paused = true;
+    toggle_paused = true;
 }
 
 void SimulationManager::resume()
 {
-    paused = false;
+    toggle_paused = false;
 }
 
 void SimulationManager::set_G(double G)
@@ -187,7 +187,7 @@ void SimulationManager::draw_simulation()
 
 void SimulationManager::handle_window_events()
 {
-    window->handle_events(paused, draw_quadtree, draw_vectors, debug);
+    window->handle_events(toggle_paused, draw_quadtree, draw_vectors, debug);
 }
 
 void SimulationManager::print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case)

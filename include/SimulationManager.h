@@ -20,7 +20,7 @@ private:
     QuadTree* tree;
     double G, theta, dt;
 
-    bool paused;
+    bool toggle_paused;
     bool draw_quadtree;
     bool draw_vectors;
     bool debug;

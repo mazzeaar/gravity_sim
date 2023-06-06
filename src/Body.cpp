@@ -12,13 +12,14 @@ Body::Body(Vec2 position, Vec2 velocity, double mass)
 {
     this->pos = position;
     this->vel = velocity;
+
     this->mass = mass;
     this->radius = pow(mass, 1.0 / 3.0);
-    std::cout << "radius: " << radius << std::endl;
-    this->pressure = std::numeric_limits<double>::max();
+
+    this->pressure = std::numeric_limits<double>::max(); // its not actually pressure, but it gets abused for that
 }
 
-void Body::apply_force(Vec2& force)
+void Body::add_force(Vec2& force)
 {
     acc += force / mass;
 }

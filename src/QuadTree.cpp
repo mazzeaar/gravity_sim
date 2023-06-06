@@ -31,11 +31,6 @@ bool QuadTree::contains(Body* body)
         body->pos.y >= top_left.y && body->pos.y <= bottom_right.y);
 }
 
-bool QuadTree::is_leaf()
-{
-    return (NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr);
-}
-
 void QuadTree::insert(Body*& body)
 {
     if (!this->contains(body))
@@ -71,6 +66,7 @@ void QuadTree::insert(Body*& body)
 
 void QuadTree::subdivide()
 {
+    // TODO - add limit to avoid infinite recursion/subdivision
     this->NW = new QuadTree(top_left, (top_left + bottom_right) / 2.0);
     this->NE = new QuadTree(Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0));
     this->SW = new QuadTree(Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
@@ -101,7 +97,7 @@ void QuadTree::compute_force(Body* body, double theta, double G, unsigned long& 
         ++calculations_per_frame;
         double magnitude = G * this->mass * body->mass / (distance * distance + epsilon * epsilon);
         Vec2 force = direction * magnitude;
-        body->apply_force(force);
+        body->add_force(force);
     }
     else
     {
