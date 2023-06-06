@@ -8,14 +8,6 @@ Its worth noting that the implementation is terrible (as of now) and there are l
 - [ ] implement [spacial hashing](https://en.wikipedia.org/wiki/Geometric_hashing) and some [integrator](https://en.wikipedia.org/wiki/Numerical_integration) for the physics
 - [ ] change datastructure from an array of objects (AoO) to an [object of arrays](https://stackoverflow.com/questions/37988451/convert-array-of-objects-to-an-object-of-arrays) (OoA), this should improve memory access
 - [ ] some graphics API, not SFML lol
-- [ ] lastly implement real multithreading and if possible do calculations directly on the gpu </br></br>
-      Its worth noting that the implementation is terrible (as of now) and there are lots of improvements to be made.
-
-- [ ] use [MVC](https://en.wikipedia.org/wiki/Model–view–controller) design pattern
-- [ ] fix the quadtree instead of reconstructing it
-- [ ] implement [spacial hashing](https://en.wikipedia.org/wiki/Geometric_hashing) and some [integrator](https://en.wikipedia.org/wiki/Numerical_integration) for the physics
-- [ ] change datastructure from an array of objects (AoO) to an [object of arrays](https://stackoverflow.com/questions/37988451/convert-array-of-objects-to-an-object-of-arrays) (OoA), this should improve memory access
-- [ ] some graphics API, not SFML lol
 - [ ] lastly implement real multithreading and if possible do calculations directly on the gpu
 
 ## Overview
