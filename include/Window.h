@@ -23,9 +23,9 @@ public:
 
     void clear();
 
-    void draw(sf::Shape* shape);
-    void draw(sf::RectangleShape* shape);
-    void draw(sf::Vertex* line, int size, sf::PrimitiveType type);
+    void draw(const sf::Shape& shape);
+    void draw(const sf::RectangleShape& shape);
+    void draw(const sf::Vertex* line, int size, sf::PrimitiveType type);
 
     void display();
     void close();

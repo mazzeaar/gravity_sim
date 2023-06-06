@@ -29,6 +29,7 @@ void Body::reset_force()
 
 void Body::update(double dt)
 {
+    vel *= 0.99;
     vel += acc * dt;
     pos += vel * dt;
 }

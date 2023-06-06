@@ -126,7 +126,7 @@ void SimulationManager::draw_simulation()
 
         for (sf::RectangleShape* rectangle : bounding_boxes)
         {
-            this->window->draw(rectangle);
+            this->window->draw(*rectangle);
         }
     }
 
@@ -161,14 +161,15 @@ void SimulationManager::draw_simulation()
     // draw bodies
     for (Body* body : this->bodies)
     {
-        this->window->circle->setRadius(1.0);
-        this->window->circle->setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
+        sf::CircleShape circle;
+        circle.setRadius(1.0);
+        circle.setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
 
         // color depends on distance to nearest body -> "pressure"
         double normalized_pressure = pow((body->pressure - min_distance) / (max_distance - min_distance), 0.5);
         if (normalized_pressure <= 0.05)
         {
-            this->window->circle->setFillColor(sf::Color(255, 255, 255));
+            circle.setFillColor(sf::Color(255, 255, 255));
         }
         else
         {
@@ -181,9 +182,9 @@ void SimulationManager::draw_simulation()
             );
             interpolatedColor.a *= 0.6 + (0.4 * normalized_pressure);
 
-            this->window->circle->setFillColor(interpolatedColor);
+            circle.setFillColor(interpolatedColor);
         }
-        this->window->draw(this->window->circle);
+        this->window->draw(circle);
 
         body->reset_pressure();
     }

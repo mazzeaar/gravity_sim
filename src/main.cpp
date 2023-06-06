@@ -33,7 +33,7 @@ int main()
 
         // velocity is perpendicular to the vector from the center of the screen to the body, clockwise
         Vec2 vel = Vec2(pos.y - height / 2, width / 2 - pos.x);
-        vel = vel / vel.length() * 15;
+        vel = vel / vel.length() * 90;
         vel *= -1.0;
 
         double mass = rand() % 5 + 1;
