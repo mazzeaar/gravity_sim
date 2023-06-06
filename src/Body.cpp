@@ -13,7 +13,8 @@ Body::Body(Vec2 position, Vec2 velocity, double mass)
     this->pos = position;
     this->vel = velocity;
     this->mass = mass;
-    this->radius = pow(mass, 1.0 / 3.0) * 2.0;
+    this->radius = pow(mass, 1.0 / 3.0);
+    std::cout << "radius: " << radius << std::endl;
     this->pressure = std::numeric_limits<double>::max();
 }
 
@@ -29,7 +30,6 @@ void Body::reset_force()
 
 void Body::update(double dt)
 {
-    vel *= 0.99;
     vel += acc * dt;
     pos += vel * dt;
 }

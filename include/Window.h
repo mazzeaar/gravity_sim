@@ -2,6 +2,7 @@
 #define WINDOW_H
 
 #include <SFML/Graphics.hpp>
+#include <string>
 
 class Window {
 private:
@@ -29,6 +30,7 @@ public:
 
     void display();
     void close();
+    void store_png(const std::string& filename);
 
     bool is_open();
 

@@ -34,6 +34,14 @@ void Window::draw(const sf::Vertex* line, int size, sf::PrimitiveType type)
     window->draw(line, size, type);
 }
 
+void Window::store_png(const std::string& filename)
+{
+    sf::Texture texture;
+    texture.create(this->width, this->height);
+    texture.update(*window);
+    texture.copyToImage().saveToFile(filename);
+}
+
 void Window::display()
 {
     window->display();

@@ -10,6 +10,7 @@
 #include <vector>
 #include <chrono>
 #include <iomanip>
+#include <thread>
 
 class SimulationManager {
 private:
@@ -45,7 +46,7 @@ public:
     void set_theta(double theta);
 
     void add_body(Body* body);
-    void add_bodys(std::vector<Body*> bodys);
+    void add_bodies(std::vector<Body*>& bodys);
     void add_body_at_position(Vec2 position, Vec2 velocity, double mass);
 
     void handle_window_events();

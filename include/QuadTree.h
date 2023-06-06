@@ -6,7 +6,6 @@
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
-#include <unordered_map>
 
 class QuadTree {
 private:
@@ -33,7 +32,7 @@ public:
 
     void subdivide();
 
-    void add_bodys(std::vector<Body*>& bodies);
+    void add_bodies(std::vector<Body*>& bodies);
     void insert(Body*& body);
 
     void update(std::vector<Body*>& bodies, double theta, double G, double dt, unsigned long& calculations_per_frame);

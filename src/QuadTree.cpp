@@ -128,7 +128,7 @@ void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double
     }
 }
 
-void QuadTree::add_bodys(std::vector<Body*>& bodies)
+void QuadTree::add_bodies(std::vector<Body*>& bodies)
 {
     for (Body* body : bodies)
     {

@@ -1,30 +1,20 @@
 #include "SimulationManager.h"
 
 SimulationManager::SimulationManager(int width, int height, const char* title, double G, double theta, double dt)
+    : G(G), theta(theta), dt(dt), paused(false), draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
 {
-    this->window = new Window(width, height, title);
-    this->G = G;
-    this->theta = theta;
-    this->dt = dt;
-
-    this->paused = false;
-    this->draw_quadtree = false;
-
+    window = new Window(width, height, title);
     double xmin = 0.0;
     double ymin = 0.0;
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
-
-    this->tree = new QuadTree(xmin, ymin, xmax, ymax);
-
-    this->total_calculations = 0;
+    tree = new QuadTree(xmin, ymin, xmax, ymax);
 }
-
 
 SimulationManager::~SimulationManager()
 {
-    delete this->window;
-    delete this->tree;
+    delete window;
+    delete tree;
 }
 
 void SimulationManager::start()
@@ -33,7 +23,7 @@ void SimulationManager::start()
     double best_case = bodies.size() * log2(bodies.size());
     unsigned long steps = 0;
 
-    while (this->window->is_open())
+    while (window->is_open() && steps <= 1000)
     {
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         handle_window_events();
@@ -46,7 +36,7 @@ void SimulationManager::start()
 
             ++steps;
             total_calculations += calculations_per_frame;
-            if (this->debug)
+            if (debug)
             {
                 print_debug_info(steps, std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0, calculations_per_frame, worst_case, best_case);
             }
@@ -59,20 +49,20 @@ void SimulationManager::start()
 
 void SimulationManager::stop()
 {
-    this->window->close();
+    window->close();
 }
 
 void SimulationManager::pause()
 {
-    this->paused = true;
+    paused = true;
 }
 
 void SimulationManager::resume()
 {
-    this->paused = false;
+    paused = false;
 }
 
-void SimulationManager::set_G(/*SNOOP D-O-*/ double G)
+void SimulationManager::set_G(double G)
 {
     this->G = G;
 }
@@ -85,55 +75,54 @@ void SimulationManager::set_theta(double theta)
 void SimulationManager::add_body_at_position(Vec2 position, Vec2 velocity, double mass)
 {
     Body* new_body = new Body(position, velocity, mass);
-    this->bodies.push_back(new_body);
-    this->tree->insert(new_body);
+    add_body(new_body);
 }
 
 void SimulationManager::add_body(Body* body)
 {
-    this->bodies.push_back(body);
-    this->tree->insert(body);
+    bodies.push_back(body);
+    tree->insert(body);
 }
 
-void SimulationManager::add_bodys(std::vector<Body*> bodys)
+void SimulationManager::add_bodies(std::vector<Body*>& bodies)
 {
-    for (Body* body : bodys)
+    for (Body* body : bodies)
     {
-        this->add_body(body);
+        add_body(body);
     }
 }
 
 void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
-    this->tree->add_bodys(this->bodies);
-    this->tree->update(this->bodies, this->theta, this->G, this->dt, calculations_per_frame);
+    tree->add_bodies(bodies);
+    tree->update(bodies, theta, G, dt, calculations_per_frame);
 
-    for (Body* body : this->bodies)
+    for (Body* body : bodies)
     {
-        body->pos += body->vel * this->dt;
+        body->pos += body->vel * dt;
     }
 }
 
 void SimulationManager::draw_simulation()
 {
-    this->window->clear();
+    window->clear();
 
     // draw the quadtree
-    if (this->draw_quadtree)
+    if (draw_quadtree)
     {
-        this->bounding_boxes.clear();
-        this->tree->get_bounding_rectangles(this->bounding_boxes);
+        bounding_boxes.clear();
+        tree->get_bounding_rectangles(bounding_boxes);
 
         for (sf::RectangleShape* rectangle : bounding_boxes)
         {
-            this->window->draw(*rectangle);
+            window->draw(*rectangle);
         }
     }
 
     // draw the vectors
-    if (this->draw_vectors)
+    if (draw_vectors)
     {
-        for (Body* body : this->bodies)
+        for (Body* body : bodies)
         {
             double angle = atan2(body->vel.y, body->vel.x);
             double length = body->vel.length();
@@ -144,14 +133,17 @@ void SimulationManager::draw_simulation()
                 sf::Vertex(sf::Vector2f(body->pos.x + cos(angle) * length, body->pos.y + sin(angle) * length))
             };
 
-            this->window->draw(line, 2, sf::Lines);
+            line[0].color.a *= 0.3;
+            line[1].color.a *= 0.3;
+
+            window->draw(line, 2, sf::Lines);
         }
     }
 
     // find the min and max distance, gets abused for pressure
     double min_distance = std::numeric_limits<double>::max();
     double max_distance = std::numeric_limits<double>::min();
-    for (Body* body : this->bodies)
+    for (Body* body : bodies)
     {
         double distance = body->pressure;
         min_distance = std::min(min_distance, distance);
@@ -159,10 +151,10 @@ void SimulationManager::draw_simulation()
     }
 
     // draw bodies
-    for (Body* body : this->bodies)
+    for (Body* body : bodies)
     {
         sf::CircleShape circle;
-        circle.setRadius(1.0);
+        circle.setRadius(body->radius);
         circle.setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
 
         // color depends on distance to nearest body -> "pressure"
@@ -184,19 +176,18 @@ void SimulationManager::draw_simulation()
 
             circle.setFillColor(interpolatedColor);
         }
-        this->window->draw(circle);
+        window->draw(circle);
 
         body->reset_pressure();
     }
 
-    this->window->display();
-    this->tree->clear();
+    window->display();
+    tree->clear();
 }
-
 
 void SimulationManager::handle_window_events()
 {
-    this->window->handle_events(this->paused, this->draw_quadtree, this->draw_vectors, this->debug);
+    window->handle_events(paused, draw_quadtree, draw_vectors, debug);
 }
 
 void SimulationManager::print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case)
