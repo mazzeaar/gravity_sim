@@ -164,18 +164,25 @@ void SimulationManager::draw_simulation()
         this->window->circle->setRadius(1.0);
         this->window->circle->setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
 
-        // color depends on distance to nearest body
+        // color depends on distance to nearest body -> "pressure"
         double normalized_pressure = pow((body->pressure - min_distance) / (max_distance - min_distance), 0.5);
-        sf::Color endColor(100, 100, 255);
-        sf::Color startColor(255, 0, 0);
-        sf::Color interpolatedColor(
-            static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.r + normalized_pressure * endColor.r),
-            static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.g + normalized_pressure * endColor.g),
-            static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.b + normalized_pressure * endColor.b)
-        );
-        interpolatedColor.a *= 0.6 + (0.4 * normalized_pressure);
+        if (normalized_pressure <= 0.05)
+        {
+            this->window->circle->setFillColor(sf::Color(255, 255, 255));
+        }
+        else
+        {
+            sf::Color endColor(100, 100, 255);
+            sf::Color startColor(255, 0, 0);
+            sf::Color interpolatedColor(
+                static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.r + normalized_pressure * endColor.r),
+                static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.g + normalized_pressure * endColor.g),
+                static_cast<sf::Uint8>((1 - normalized_pressure) * startColor.b + normalized_pressure * endColor.b)
+            );
+            interpolatedColor.a *= 0.6 + (0.4 * normalized_pressure);
 
-        this->window->circle->setFillColor(interpolatedColor);
+            this->window->circle->setFillColor(interpolatedColor);
+        }
         this->window->draw(this->window->circle);
 
         body->reset_pressure();
