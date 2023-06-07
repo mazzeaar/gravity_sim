@@ -8,7 +8,7 @@ SimulationManager::SimulationManager(int width, int height, const char* title, d
     double ymin = 0.0;
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
-    tree = new QuadTree(xmin, ymin, xmax, ymax);
+    tree = new QuadTree(xmin, ymin, xmax, ymax, &bodies);
 }
 
 SimulationManager::~SimulationManager()
@@ -42,27 +42,6 @@ void SimulationManager::start()
             calculations_per_frame = 0;
         }
         draw_simulation();
-    }
-}
-
-void SimulationManager::add_body_at_position(Vec2 position, Vec2 velocity, double mass)
-{
-    Body* new_body = new Body(position, velocity, mass);
-    add_body(new_body);
-}
-
-void SimulationManager::add_body(Body* body)
-{
-    bodies.push_back(body);
-    tree->insert(body);
-}
-
-void SimulationManager::add_bodies(std::vector<Body*>& bodies)
-{
-    // fix this wonky ass shit
-    for (Body* body : bodies)
-    {
-        add_body(body);
     }
 }
 
@@ -209,7 +188,6 @@ void SimulationManager::draw_simulation()
     window->display();
     tree->clear();
 }
-
 
 void SimulationManager::handle_window_events()
 {

@@ -1,15 +1,14 @@
 #include "SimulationManager.h"
-#include "Body.h"
 #include "Vec2.h"
 
 // ====================================
 // ========== CONFIGURATION ===========
 // = TODO: make this a config file!!! =
 // ====================================
-const double G = 6.67408e-2;
+const double G = 6.67408e-3;
 const double theta = 2.4;
 const double dt = 0.1;
-const unsigned body_count = 20000;
+const unsigned body_count = 5000;
 
 const int max_mass = 5;
 

@@ -2,7 +2,6 @@
 #define SIMULATION_MANAGER_H
 
 #include "QuadTree.h"
-#include "Body.h"
 #include "Window.h"
 #include "Vec2.h"
 
@@ -14,7 +13,7 @@
 
 class SimulationManager {
 private:
-    std::vector<Body*> bodies;
+    Bodies bodies;
     std::vector<sf::RectangleShape*> bounding_boxes;
 
     QuadTree* tree;
@@ -38,10 +37,6 @@ public:
 
     void update_simulation(unsigned long& calculations_per_frame);
     void draw_simulation();
-
-    void add_body(Body* body);
-    void add_bodies(std::vector<Body*>& bodys);
-    void add_body_at_position(Vec2 position, Vec2 velocity, double mass);
 
     void handle_window_events();
     void print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case);
