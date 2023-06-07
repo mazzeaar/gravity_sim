@@ -13,11 +13,9 @@ Its worth noting that the implementation is terrible (as of now) and there are l
 ## Overview
 
 The [Barnes-Hut algorithm](https://en.wikipedia.org/wiki/Barnes–Hut_simulation) is a method used to compute the gravitational forces between bodies in a system, where each body has a mass, position, and velocity. A [quadtree](https://en.wikipedia.org/wiki/Quadtree#:~:text=A%20quadtree%20is%20a%20tree,into%20four%20quadrants%20or%20regions.) is used to divide the 2D space containing the bodies into distinct sections. This allows the algorithm to calculate gravitational forces more efficiently.
-The [Barnes-Hut algorithm](https://en.wikipedia.org/wiki/Barnes–Hut_simulation) is a method used to compute the gravitational forces between bodies in a system, where each body has a mass, position, and velocity. A [quadtree](https://en.wikipedia.org/wiki/Quadtree#:~:text=A%20quadtree%20is%20a%20tree,into%20four%20quadrants%20or%20regions.) is used to divide the 2D space containing the bodies into distinct sections. This allows the algorithm to calculate gravitational forces more efficiently.
 
 ## Animation of the Algorithm
 
-This animation was done with $n=100000$ particles, $\theta = 0.8$, $dt = 0.1$. Its $1000$ frames rendered to a GIF with $30 \text{ fps}$.
 This animation was done with $n=100000$ particles, $\theta = 0.8$, $dt = 0.1$. Its $1000$ frames rendered to a GIF with $30 \text{ fps}$.
 ![Animation of the Barnes-Hut algorithm](./images/animation.gif)
 
@@ -50,19 +48,11 @@ cd gravity_sim
 
 ```bash
 cmake .
-cmake .
 ```
 
 4. Run the simulation:
 
 ```bash
-make run
-```
-
-or
-
-```bash
-make && ./gravity_sim
 make run
 ```
 
