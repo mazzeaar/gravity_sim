@@ -30,15 +30,6 @@ public:
     // deletes all children and bodies
     void clear();
 
-    // returns true if body is contained in this quadtree
-    bool contains(Body* body);
-
-    // returns true if this quadtree has no children -> is a leaf
-    inline bool is_leaf()
-    {
-        return (NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr);
-    }
-
     // splits this quadtree into 4 children
     void subdivide();
 
@@ -54,6 +45,19 @@ public:
     // returns the bounding boxes of all bodies in this quadtree
     // => is used for drawing the quadtree structure and is extremely inefficient and expensive to run
     void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
+
+    // returns true if body is contained in this quadtree
+    inline bool contains(Body* body)
+    {
+        return (body->pos.x >= top_left.x && body->pos.x <= bottom_right.x &&
+            body->pos.y >= top_left.y && body->pos.y <= bottom_right.y);
+    }
+
+    // returns true if this quadtree has no children -> is a leaf
+    inline bool is_leaf()
+    {
+        return (NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr);
+    }
 };
 
 #endif // QUADTREE_H

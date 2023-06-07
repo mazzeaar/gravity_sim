@@ -35,15 +35,9 @@ public:
     ~SimulationManager();
 
     void start();
-    void pause();
-    void resume();
-    void stop();
 
     void update_simulation(unsigned long& calculations_per_frame);
     void draw_simulation();
-
-    void set_G(double G);
-    void set_theta(double theta);
 
     void add_body(Body* body);
     void add_bodies(std::vector<Body*>& bodys);
@@ -51,6 +45,12 @@ public:
 
     void handle_window_events();
     void print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case);
+
+    inline void pause() { toggle_paused = !toggle_paused; }
+    inline void resume() { toggle_paused = !toggle_paused; }
+    inline void stop() { this->window->close(); }
+    inline void set_G(double G) { this->G = G; }
+    inline void set_theta(double theta) { this->theta = theta; }
 };
 
 #endif // SIMULATION_MANAGER_H

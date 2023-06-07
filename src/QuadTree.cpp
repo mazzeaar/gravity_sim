@@ -25,12 +25,6 @@ QuadTree::~QuadTree()
     if (SE != nullptr) delete SE;
 }
 
-bool QuadTree::contains(Body* body)
-{
-    return (body->pos.x >= top_left.x && body->pos.x <= bottom_right.x &&
-        body->pos.y >= top_left.y && body->pos.y <= bottom_right.y);
-}
-
 void QuadTree::insert(Body*& body)
 {
     if (!this->contains(body))
