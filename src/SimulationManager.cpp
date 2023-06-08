@@ -8,10 +8,9 @@ SimulationManager::SimulationManager(const int width, const int height, const ch
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
 
-    bodies = new Bodies(1000);
-    std::shared_ptr<Bodies> bo = std::make_shared<Bodies>(bodies);
+    bodies = std::make_shared<Bodies>(1000);
+    tree = std::make_shared<QuadTree>(bodies, xmin, ymin, xmax, ymax);
 
-    tree = std::make_shared<QuadTree>(bo, xmin, ymin, xmax, ymax);
     window = new Window(width, height, title);
 }
 
@@ -19,7 +18,8 @@ SimulationManager::~SimulationManager()
 {
     if (toggle_verbose) std::cout << "=> SimulationManager::~SimulationManager()" << std::endl;
 
-    delete bodies;
+    bodies = nullptr;
+    tree = nullptr;
     delete window;
 
     if (toggle_verbose) std::cout << "==> successfully deleted window and tree" << std::endl;
@@ -57,7 +57,7 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
     if (toggle_verbose)
     {
         std::cout << "==> successfully added " << count << " bodies" << std::endl;
-        bodies->print();
+        // bodies->print();
     }
 
 }
@@ -98,8 +98,8 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
     if (toggle_verbose) std::cout << "=> SimulationManager::update_simulation()" << std::endl;
 
-    tree->clear();
-    tree->insert(std::shared_ptr<Bodies>(bodies));
+    tree = nullptr;
+    tree = std::make_shared<QuadTree>(bodies, 0.0, 0.0, static_cast<double>(window->get_width()), static_cast<double>(window->get_height()));
     tree->update(theta, G, dt, calculations_per_frame);
 
     if (toggle_verbose) std::cout << "==> successfully updated simulation" << std::endl;

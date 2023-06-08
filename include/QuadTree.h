@@ -35,7 +35,7 @@ public:
     // Method to add a force to a specific body
     inline void add_force(unsigned index, const Vec2& force)
     {
-        acc[index] += force / mass[index];
+        acc[index] += (force / mass[index]);
     }
 
     // Method to reset the force on a specific body
@@ -104,7 +104,10 @@ private:
     int body_index = -1;
     std::shared_ptr<Bodies> bodies;
 
-    QuadTree* NW, * NE, * SW, * SE; // children
+    std::shared_ptr<QuadTree> NW;
+    std::shared_ptr<QuadTree> NE;
+    std::shared_ptr<QuadTree> SW;
+    std::shared_ptr<QuadTree> SE;
 
     // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
     void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
@@ -122,7 +125,7 @@ public:
     bool subdivide();
 
     // inserts one body into this quadtree
-    void insert(std::shared_ptr<Bodies> bodies);
+    void insert(std::shared_ptr<Bodies>& bodies);
     void insert(unsigned index);
 
     // updates all bodies in this quadtree

@@ -5,12 +5,12 @@
 // ========== CONFIGURATION ===========
 // = TODO: make this a config file!!! =
 // ====================================
-const double G = 6.67408e1;
+const double G = 6.67408e3;
 const double theta = 1.8;
 const double dt = 0.1;
-const unsigned body_count = 20000;
+const unsigned body_count = 40000;
 
-const int max_mass = 5;
+const int max_mass = 500;
 
 const int height = 2200;
 //const int width = height / 19.5 * 9.0;

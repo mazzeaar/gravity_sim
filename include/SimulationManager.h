@@ -15,7 +15,7 @@
 class SimulationManager {
 private:
 
-    Bodies* bodies;
+    std::shared_ptr<Bodies> bodies;
     Window* window;
     std::shared_ptr<QuadTree> tree;
     std::vector<sf::RectangleShape*> bounding_boxes;

@@ -20,10 +20,10 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, dou
 
 QuadTree::~QuadTree()
 {
-    if (NW != nullptr) delete NW;
-    if (NE != nullptr) delete NE;
-    if (SW != nullptr) delete SW;
-    if (SE != nullptr) delete SE;
+    NW = nullptr;
+    NE = nullptr;
+    SW = nullptr;
+    SE = nullptr;
 }
 
 bool QuadTree::contains(unsigned index)
@@ -34,12 +34,15 @@ bool QuadTree::contains(unsigned index)
         && bodies->pos.at(index).y <= bottom_right.y;
 }
 
-void QuadTree::insert(std::shared_ptr<Bodies> bodies)
+void QuadTree::insert(std::shared_ptr<Bodies>& bodies)
 {
     if (bodies == nullptr || this->bodies != bodies)
     {
-        std::cout << "Bodies is null" << std::endl;
-        return;
+        std::string error = "QuadTree::insert(std::shared_ptr<Bodies> bodies) : bodies == nullptr || this->bodies != bodies";
+        std::string error_location = "Path: src/QuadTree.cpp";
+        // append the values of the variables to the error message
+        std::string error_details = "bodies = " + std::to_string((long long) bodies.get()) + ", this->bodies = " + std::to_string((long long) this->bodies.get());
+        throw std::invalid_argument(error + "\n" + error_location + "\n" + error_details);
     }
 
     for (unsigned i = 0; i < bodies->get_size(); ++i)
@@ -97,10 +100,10 @@ bool QuadTree::subdivide()
     }
     else
     {
-        this->NW = new QuadTree(bodies, top_left, (top_left + bottom_right) / 2.0);
-        this->NE = new QuadTree(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0));
-        this->SW = new QuadTree(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
-        this->SE = new QuadTree(bodies, (top_left + bottom_right) / 2.0, bottom_right);
+        this->NW = std::make_shared<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0);
+        this->NE = std::make_shared<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0));
+        this->SW = std::make_shared<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
+        this->SE = std::make_shared<QuadTree>(bodies, (top_left + bottom_right) / 2.0, bottom_right);
 
         return true;
     }
@@ -108,34 +111,40 @@ bool QuadTree::subdivide()
 
 void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
 {
-    ++calculations_per_frame;
-    double epsilon = 0.1; // softening factor to prevent force go brrrrr
-
-    if (body_index == -1 || body_index == index)
+    if (this->body_index == index)
     {
-        return;
+        std::cout << "not computing force on self" << std::endl;
     }
+
+    double epsilon = 0.1; // softening factor to prevent force go brrrrr
 
     Vec2 direction = this->center_of_mass - bodies->pos[index];
     double distance = direction.length();
 
-    // quadrant size = width = height
-    double quadrant_size = (this->bottom_right.x - this->top_left.x);
-
-    if (distance <= quadrant_size / theta) // Check if we are close enough
+    if (distance == 0.0)
     {
-        // We are close enough to this quadrant, so we will treat this quadrant as a single body.
+        std::cout << "distance == 0.0" << std::endl;
+        return;
+    }
+
+    // quadrant size = width = height
+    double quadrant_size = this->bottom_right.x - this->top_left.x;
+
+    if (quadrant_size / distance < theta || this->NW == nullptr) // Check if we are close enough
+    {
+        ++calculations_per_frame;
         double force = (G * this->mass * bodies->mass[index]) / (distance * distance + epsilon * epsilon);
         bodies->add_force(index, direction.normalize() * force);
     }
     else
     {
-        if (NW != nullptr) NW->compute_force(index, theta, G, calculations_per_frame);
-        if (NE != nullptr) NE->compute_force(index, theta, G, calculations_per_frame);
-        if (SW != nullptr) SW->compute_force(index, theta, G, calculations_per_frame);
-        if (SE != nullptr) SE->compute_force(index, theta, G, calculations_per_frame);
+        if (NW != nullptr && NW->contains(index)) NW->compute_force(index, theta, G, calculations_per_frame);
+        if (NE != nullptr && NE->contains(index)) NE->compute_force(index, theta, G, calculations_per_frame);
+        if (SW != nullptr && SW->contains(index)) SW->compute_force(index, theta, G, calculations_per_frame);
+        if (SE != nullptr && SE->contains(index)) SE->compute_force(index, theta, G, calculations_per_frame);
     }
 }
+
 
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
@@ -168,31 +177,10 @@ void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectang
 
 void QuadTree::clear()
 {
-    if (NW != nullptr)
-    {
-        delete NW;
-        NW = nullptr;
-    }
-    if (NE != nullptr)
-    {
-        delete NE;
-        NE = nullptr;
-    }
-    if (SW != nullptr)
-    {
-        delete SW;
-        SW = nullptr;
-    }
-    if (SE != nullptr)
-    {
-        delete SE;
-        SE = nullptr;
-    }
-
-    if (bodies != nullptr)
-    {
-        bodies = nullptr;
-    }
+    NW = nullptr;
+    NE = nullptr;
+    SW = nullptr;
+    SE = nullptr;
 
     body_index = -1;
     center_of_mass = Vec2(0, 0);
