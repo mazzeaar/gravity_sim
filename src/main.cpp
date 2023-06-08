@@ -5,12 +5,12 @@
 // ========== CONFIGURATION ===========
 // = TODO: make this a config file!!! =
 // ====================================
-const double G = 6.67408e0;
-const double theta = 0.6;
+const double G = 6.67408e1;
+const double theta = 1.8;
 const double dt = 0.1;
-const unsigned body_count = 5000;
+const unsigned body_count = 20000;
 
-const int max_mass = 100;
+const int max_mass = 5;
 
 const int height = 2200;
 //const int width = height / 19.5 * 9.0;
@@ -29,7 +29,7 @@ int main()
     simulation_manager->set_draw_vectors(false);
     simulation_manager->set_draw_quadtree(false);
 
-    simulation_manager->add_bodies(10000, max_mass);
+    simulation_manager->add_bodies(body_count, max_mass);
 
     simulation_manager->run();
 }

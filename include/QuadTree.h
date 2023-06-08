@@ -35,7 +35,7 @@ public:
     // Method to add a force to a specific body
     inline void add_force(unsigned index, const Vec2& force)
     {
-        acc[index] += force;
+        acc[index] += force / mass[index];
     }
 
     // Method to reset the force on a specific body
@@ -56,15 +56,6 @@ public:
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
         pressure.resize(num_bodies, std::numeric_limits<double>::max());
-    }
-
-    // Method to update a specific body
-    inline void update(unsigned index, double dt)
-    {
-        vel[index] += acc[index] * dt;
-        pos[index] += vel[index] * dt;
-
-        reset_force(index);
     }
 
     inline void update(double dt)
@@ -111,7 +102,7 @@ private:
     double pressure_threshold;
 
     int body_index = -1;
-    Bodies* bodies;
+    Bodies** bodies;
 
     QuadTree* NW, * NE, * SW, * SE; // children
 
@@ -120,8 +111,8 @@ private:
     void insert(unsigned index);
 
 public:
-    QuadTree(Bodies* bodies, Vec2 top_left, Vec2 bottom_right);
-    QuadTree(Bodies* bodies, double xmin, double ymin, double xmax, double ymax);
+    QuadTree(Bodies** bodies, Vec2 top_left, Vec2 bottom_right);
+    QuadTree(Bodies** bodies, double xmin, double ymin, double xmax, double ymax);
 
     ~QuadTree();
 
@@ -132,7 +123,7 @@ public:
     bool subdivide();
 
     // inserts one body into this quadtree
-    void insert(Bodies* bodies);
+    void insert(Bodies** bodies);
 
     // updates all bodies in this quadtree
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);

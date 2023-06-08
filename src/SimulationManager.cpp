@@ -11,7 +11,8 @@ SimulationManager::SimulationManager(const int width, const int height, const ch
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
 
-    tree = new QuadTree(bodies, xmin, ymin, xmax, ymax);
+    Bodies** bodies_ptr = &bodies;
+    tree = new QuadTree(bodies_ptr, xmin, ymin, xmax, ymax);
     window = new Window(width, height, title);
 }
 
@@ -48,10 +49,11 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
         bodies->pos[i] = Vec2(x, y);
 
-        double v_x = rand() % 200 - 100 / 100.0;
-        double v_y = rand() % 200 - 100 / 100.0;
-        bodies->vel[i] = Vec2(0, 0);
+        double angle = atan2(y - window->get_height() / 2.0, x - window->get_width() / 2.0);
 
+        bodies->vel[i] = Vec2(-sin(angle), cos(angle)) * 10;
+
+        bodies->pressure[i] = std::numeric_limits<double>::max();
     }
 
     if (toggle_verbose)
@@ -91,7 +93,6 @@ void SimulationManager::run()
         }
 
         draw_simulation();
-        tree->clear();
     }
 }
 
@@ -99,7 +100,8 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
     if (toggle_verbose) std::cout << "=> SimulationManager::update_simulation()" << std::endl;
 
-    tree->insert(bodies);
+    tree->clear();
+    tree->insert(&bodies);
     tree->update(theta, G, dt, calculations_per_frame);
 
     if (toggle_verbose) std::cout << "==> successfully updated simulation" << std::endl;
@@ -207,7 +209,7 @@ void SimulationManager::draw_simulation()
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         sf::CircleShape circle;
-        circle.setRadius(bodies->radius[i]);
+        circle.setRadius(1);
         circle.setPosition(bodies->pos[i].x - bodies->radius[i], bodies->pos[i].y - bodies->radius[i]);
 
         // color depends on distance to nearest body -> "pressure"
