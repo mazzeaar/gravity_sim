@@ -8,6 +8,7 @@
 #include <vector>
 
 struct Bodies {
+public:
     std::vector<Vec2> pos;
     std::vector<Vec2> vel;
     std::vector<Vec2> acc;
@@ -16,63 +17,89 @@ struct Bodies {
     std::vector<double> radius;
     std::vector<double> pressure;
 
-    size_t size;
+    unsigned size;
 
     // Constructor that resizes the vectors to hold a specific number of bodies
-    Bodies(size_t num_bodies)
+    Bodies(unsigned num_bodies)
     {
         size = num_bodies;
 
-        pos.resize(num_bodies, Vec2(0, 0));
-        vel.resize(num_bodies, Vec2(0, 0));
-        acc.resize(num_bodies, Vec2(0, 0));
+        pos.resize(num_bodies);
+        vel.resize(num_bodies);
+        acc.resize(num_bodies);
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
         pressure.resize(num_bodies, std::numeric_limits<double>::max());
     }
 
     // Method to add a force to a specific body
-    inline void add_force(size_t index, const Vec2& force)
+    inline void add_force(unsigned index, const Vec2& force)
     {
-        acc[index] += force / mass[index];
+        acc[index] += force;
     }
 
     // Method to reset the force on a specific body
-    inline void reset_force(size_t index)
+    inline void reset_force(unsigned index)
     {
         acc[index] = Vec2(0.0, 0.0);
     }
 
+    inline void resize(unsigned num_bodies)
+    {
+        if (num_bodies <= size) return;
+
+        size = num_bodies;
+
+        pos.resize(num_bodies);
+        vel.resize(num_bodies);
+        acc.resize(num_bodies);
+        mass.resize(num_bodies, 0.0);
+        radius.resize(num_bodies, 0.0);
+        pressure.resize(num_bodies, std::numeric_limits<double>::max());
+    }
+
     // Method to update a specific body
-    inline void update(size_t index, double dt)
+    inline void update(unsigned index, double dt)
     {
         vel[index] += acc[index] * dt;
         pos[index] += vel[index] * dt;
+
+        reset_force(index);
     }
 
     inline void update(double dt)
     {
-        for (size_t i = 0; i < size; ++i)
+        for (unsigned i = 0; i < size; ++i)
         {
             vel[i] += acc[i] * dt;
             pos[i] += vel[i] * dt;
+
+            reset_force(i);
         }
     }
 
-    // Method to get the pressure of a specific body
-    double get_pressure(size_t index)
+    double get_pressure(unsigned index) { return pressure[index]; }
+    void reset_pressure(unsigned index) { pressure[index] = std::numeric_limits<double>::max(); }
+    unsigned get_size() { return size; }
+
+    void print() const
     {
-        return pressure[index];
+        for (unsigned i = 0; i < size; ++i)
+        {
+            print(i);
+        }
     }
 
-    // Method to reset the pressure of a specific body
-    void reset_pressure(size_t index)
+    void print(unsigned index) const
     {
-        pressure[index] = std::numeric_limits<double>::max();
+        std::cout << "===> body " << index << ": " << std::endl;
+        std::cout << "     pos: " << pos[index] << std::endl;
+        std::cout << "     vel: " << vel[index] << std::endl;
+        std::cout << "     acc: " << acc[index] << std::endl;
+        std::cout << "     mass: " << mass[index] << std::endl;
+        std::cout << "     radius: " << radius[index] << std::endl;
+        std::cout << "     pressure: " << pressure[index] << std::endl;
     }
-
-    // Method to get the size of the bodies vector
-    size_t get_size() { return size; }
 };
 
 class QuadTree {
@@ -105,18 +132,7 @@ public:
     bool subdivide();
 
     // inserts one body into this quadtree
-    inline void insert(Bodies* bodies)
-    {
-        for (unsigned i = 0; i < bodies->get_size(); ++i)
-        {
-            if (this->contains(i))
-            {
-                std::cout << "inserting body " << i << std::endl;
-
-                insert(i);
-            }
-        }
-    }
+    void insert(Bodies* bodies);
 
     // updates all bodies in this quadtree
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);

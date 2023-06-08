@@ -1,49 +1,78 @@
 #include "SimulationManager.h"
 
 SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
-    : G(G), theta(theta), dt(dt), toggle_paused(false), toggle_draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
+    : G(G), theta(theta), dt(dt), toggle_paused(false), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
 {
-    window = new Window(width, height, title);
-    bodies = nullptr;
+
+    bodies = new Bodies(1000);
 
     double xmin = 0.0;
     double ymin = 0.0;
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
+
     tree = new QuadTree(bodies, xmin, ymin, xmax, ymax);
+    window = new Window(width, height, title);
 }
 
 SimulationManager::~SimulationManager()
 {
+    if (toggle_verbose) std::cout << "=> SimulationManager::~SimulationManager()" << std::endl;
+
+    delete bodies;
     delete window;
     delete tree;
+
+    if (toggle_verbose) std::cout << "==> successfully deleted window and tree" << std::endl;
 }
 
 void SimulationManager::add_bodies(unsigned count, int max_mass)
 {
-    bodies = new Bodies(count);
+    if (toggle_verbose)
+    {
+        std::cout << "=> SimulationManager::add_bodies(" << count << ", " << max_mass << ")" << std::endl;
+    }
 
-    for (size_t i = 0; i < count; ++i)
+    if (count > bodies->get_size())
+    {
+        bodies->resize(count);
+    }
+
+    for (unsigned i = 0; i < count; ++i)
     {
         bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
         bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
 
-        bodies->pos[i].x = static_cast<double>(rand() % (window->get_width() / 5) + window->get_width() / 5);
-        bodies->pos[i].y = static_cast<double>(rand() % (window->get_height() / 5) + window->get_height() / 5);
+        double x = rand() % (3 * window->get_width() / 5) + window->get_width() / 5;
+        double y = rand() % (3 * window->get_height() / 5) + window->get_height() / 5;
 
-        bodies->vel[i].x = static_cast<double>(rand() % 200 - 100) / 100.0;
-        bodies->vel[i].y = static_cast<double>(rand() % 200 - 100) / 100.0;
+        bodies->pos[i] = Vec2(x, y);
+
+        double v_x = rand() % 200 - 100 / 100.0;
+        double v_y = rand() % 200 - 100 / 100.0;
+        bodies->vel[i] = Vec2(0, 0);
+
     }
+
+    if (toggle_verbose)
+    {
+        std::cout << "==> successfully added " << count << " bodies" << std::endl;
+        bodies->print();
+    }
+
 }
 
 void SimulationManager::run()
 {
+    if (toggle_verbose) std::cout << "=> SimulationManager::run()" << std::endl;
+
     double worst_case = bodies->get_size() * bodies->get_size();
     double best_case = bodies->get_size() * log2(bodies->get_size());
     unsigned long steps = 0;
 
     while (window->is_open())
     {
+        ++steps;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         handle_window_events();
 
@@ -54,7 +83,7 @@ void SimulationManager::run()
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
             total_calculations += calculations_per_frame;
-            if (debug)
+            if (toggle_debug)
             {
                 print_debug_info(steps, std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0, calculations_per_frame, worst_case, best_case);
             }
@@ -62,23 +91,18 @@ void SimulationManager::run()
         }
 
         draw_simulation();
+        tree->clear();
     }
 }
 
 void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
-    try
-    {
-        tree->insert(bodies);
-    }
-    catch (const std::exception& e)
-    {
-        const char* error = "=> insert failed in SimulationManager::update_simulation()\n";
-        std::cout << error << e.what() << std::endl;
-        stop();
-    }
+    if (toggle_verbose) std::cout << "=> SimulationManager::update_simulation()" << std::endl;
 
+    tree->insert(bodies);
     tree->update(theta, G, dt, calculations_per_frame);
+
+    if (toggle_verbose) std::cout << "==> successfully updated simulation" << std::endl;
 }
 
 sf::Color HSLtoRGB(float hue, float saturation, float lightness)
@@ -150,9 +174,9 @@ void SimulationManager::draw_simulation()
     }
 
     // draw the vectors
-    if (draw_vectors)
+    if (toggle_draw_vectors)
     {
-        for (size_t i = 0; i < bodies->get_size(); ++i)
+        for (unsigned i = 0; i < bodies->get_size(); ++i)
         {
             double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
             double length = bodies->vel[i].length();
@@ -172,7 +196,7 @@ void SimulationManager::draw_simulation()
     // find the min and max distance, gets abused for pressure
     double min_distance = std::numeric_limits<double>::max();
     double max_distance = std::numeric_limits<double>::min();
-    for (size_t i = 0; i < bodies->get_size(); ++i)
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         double distance = bodies->pressure[i];
         min_distance = std::min(min_distance, distance);
@@ -180,7 +204,7 @@ void SimulationManager::draw_simulation()
     }
 
     // draw bodies
-    for (size_t i = 0; i < bodies->get_size(); ++i)
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         sf::CircleShape circle;
         circle.setRadius(bodies->radius[i]);
@@ -216,12 +240,13 @@ void SimulationManager::draw_simulation()
     }
 
     window->display();
-    tree->clear();
 }
 
 void SimulationManager::handle_window_events()
 {
-    window->handle_events(toggle_paused, toggle_draw_quadtree, draw_vectors, debug);
+    if (toggle_verbose) std::cout << "=> SimulationManager::handle_window_events()" << std::endl;
+    window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug);
+    if (toggle_verbose) std::cout << "==> successfully handled window events" << std::endl;
 }
 
 void SimulationManager::print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case)

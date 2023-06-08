@@ -1,8 +1,10 @@
 #include "QuadTree.h"
 
 QuadTree::QuadTree(Bodies* bodies, Vec2 top_left, Vec2 bottom_right) :
-    top_left(top_left), bottom_right(bottom_right), bodies(bodies)
+    top_left(top_left), bottom_right(bottom_right)
 {
+    this->bodies = bodies;
+
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
 
@@ -22,14 +24,30 @@ QuadTree::~QuadTree()
     if (NE != nullptr) delete NE;
     if (SW != nullptr) delete SW;
     if (SE != nullptr) delete SE;
+
+    if (bodies == nullptr) delete bodies;
+    bodies = nullptr;
 }
 
 bool QuadTree::contains(unsigned index)
 {
-    return this->bodies->pos[index].x >= top_left.x &&
-        this->bodies->pos[index].x <= bottom_right.x &&
-        this->bodies->pos[index].y >= top_left.y &&
-        this->bodies->pos[index].y <= bottom_right.y;
+    return this->bodies->pos.at(index).x >= top_left.x &&
+        this->bodies->pos.at(index).x <= bottom_right.x &&
+        this->bodies->pos.at(index).y >= top_left.y &&
+        this->bodies->pos.at(index).y <= bottom_right.y;
+}
+
+void QuadTree::insert(Bodies* bodies)
+{
+    this->bodies = bodies;
+
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
+    {
+        if (this->contains(i))
+        {
+            insert(i);
+        }
+    }
 }
 
 void QuadTree::insert(unsigned index)
@@ -49,7 +67,7 @@ void QuadTree::insert(unsigned index)
     {
         if (NW == nullptr && !this->subdivide())
         {
-            bodies->pressure[index] = (center_of_mass - bodies->pos[index]).length() * mass;
+            //bodies->pressure[index] = (center_of_mass - bodies->pos[index]).length() * mass;
             return;
         }
         else
@@ -104,12 +122,10 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
     {
         // We are close enough to this quadrant, so we will treat this quadrant as a single body.
         double force = (G * this->mass * bodies->mass[index]) / (distance * distance + epsilon * epsilon);
-        bodies->acc[index] += (direction.normalize() * force) / bodies->mass[index];
-        calculations_per_frame++;
+        bodies->add_force(index, direction.normalize() * force);
     }
     else
     {
-        // We are not close enough, so we will go deeper into the quadtree.
         if (NW != nullptr) NW->compute_force(index, theta, G, calculations_per_frame);
         if (NE != nullptr) NE->compute_force(index, theta, G, calculations_per_frame);
         if (SW != nullptr) SW->compute_force(index, theta, G, calculations_per_frame);
@@ -119,7 +135,7 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
 
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
-    for (size_t i = 0; i < bodies->get_size(); ++i)
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         this->compute_force(i, theta, G, calculations_per_frame);
     }
@@ -169,8 +185,8 @@ void QuadTree::clear()
         SE = nullptr;
     }
 
-    bodies = nullptr;
     body_index = -1;
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
+    bodies = nullptr;
 }
