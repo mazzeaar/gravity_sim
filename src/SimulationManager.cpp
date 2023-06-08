@@ -1,14 +1,16 @@
 #include "SimulationManager.h"
 
-SimulationManager::SimulationManager(int width, int height, const char* title, double G, double theta, double dt)
-    : G(G), theta(theta), dt(dt), toggle_paused(false), draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
+SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
+    : G(G), theta(theta), dt(dt), toggle_paused(false), toggle_draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
 {
     window = new Window(width, height, title);
+    bodies = nullptr;
+
     double xmin = 0.0;
     double ymin = 0.0;
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
-    tree = new QuadTree(xmin, ymin, xmax, ymax, &bodies);
+    tree = new QuadTree(bodies, xmin, ymin, xmax, ymax);
 }
 
 SimulationManager::~SimulationManager()
@@ -17,10 +19,27 @@ SimulationManager::~SimulationManager()
     delete tree;
 }
 
-void SimulationManager::start()
+void SimulationManager::add_bodies(unsigned count, int max_mass)
 {
-    double worst_case = bodies.size() * bodies.size();
-    double best_case = bodies.size() * log2(bodies.size());
+    bodies = new Bodies(count);
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
+        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
+
+        bodies->pos[i].x = static_cast<double>(rand() % (window->get_width() / 5) + window->get_width() / 5);
+        bodies->pos[i].y = static_cast<double>(rand() % (window->get_height() / 5) + window->get_height() / 5);
+
+        bodies->vel[i].x = static_cast<double>(rand() % 200 - 100) / 100.0;
+        bodies->vel[i].y = static_cast<double>(rand() % 200 - 100) / 100.0;
+    }
+}
+
+void SimulationManager::run()
+{
+    double worst_case = bodies->get_size() * bodies->get_size();
+    double best_case = bodies->get_size() * log2(bodies->get_size());
     unsigned long steps = 0;
 
     while (window->is_open())
@@ -41,14 +60,25 @@ void SimulationManager::start()
             }
             calculations_per_frame = 0;
         }
+
         draw_simulation();
     }
 }
 
 void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
-    tree->add_bodies(bodies);
-    tree->update(bodies, theta, G, dt, calculations_per_frame);
+    try
+    {
+        tree->insert(bodies);
+    }
+    catch (const std::exception& e)
+    {
+        const char* error = "=> insert failed in SimulationManager::update_simulation()\n";
+        std::cout << error << e.what() << std::endl;
+        stop();
+    }
+
+    tree->update(theta, G, dt, calculations_per_frame);
 }
 
 sf::Color HSLtoRGB(float hue, float saturation, float lightness)
@@ -108,7 +138,7 @@ void SimulationManager::draw_simulation()
     window->clear();
 
     // draw the quadtree
-    if (draw_quadtree)
+    if (toggle_draw_quadtree)
     {
         bounding_boxes.clear();
         tree->get_bounding_rectangles(bounding_boxes);
@@ -122,14 +152,14 @@ void SimulationManager::draw_simulation()
     // draw the vectors
     if (draw_vectors)
     {
-        for (Body* body : bodies)
+        for (size_t i = 0; i < bodies->get_size(); ++i)
         {
-            double angle = atan2(body->vel.y, body->vel.x);
-            double length = body->vel.length();
+            double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
+            double length = bodies->vel[i].length();
 
             sf::Vertex line[] = {
-                sf::Vertex(sf::Vector2f(body->pos.x, body->pos.y)),
-                sf::Vertex(sf::Vector2f(body->pos.x + cos(angle) * length, body->pos.y + sin(angle) * length))
+                sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
+                sf::Vertex(sf::Vector2f(bodies->pos[i].x + cos(angle) * length, bodies->pos[i].y + sin(angle) * length))
             };
 
             line[0].color.a *= 0.3;
@@ -142,22 +172,22 @@ void SimulationManager::draw_simulation()
     // find the min and max distance, gets abused for pressure
     double min_distance = std::numeric_limits<double>::max();
     double max_distance = std::numeric_limits<double>::min();
-    for (Body* body : bodies)
+    for (size_t i = 0; i < bodies->get_size(); ++i)
     {
-        double distance = body->pressure;
+        double distance = bodies->pressure[i];
         min_distance = std::min(min_distance, distance);
         if (distance != std::numeric_limits<double>::max()) max_distance = std::max(max_distance, distance);
     }
 
     // draw bodies
-    for (Body* body : bodies)
+    for (size_t i = 0; i < bodies->get_size(); ++i)
     {
         sf::CircleShape circle;
-        circle.setRadius(body->radius);
-        circle.setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
+        circle.setRadius(bodies->radius[i]);
+        circle.setPosition(bodies->pos[i].x - bodies->radius[i], bodies->pos[i].y - bodies->radius[i]);
 
         // color depends on distance to nearest body -> "pressure"
-        double normalized_pressure = pow((body->pressure - min_distance) / (max_distance - min_distance), 0.5);
+        double normalized_pressure = pow((bodies->pressure[i] - min_distance) / (max_distance - min_distance), 0.5);
         sf::Color interpolatedColor;
 
         if (normalized_pressure <= 0.05)
@@ -182,7 +212,7 @@ void SimulationManager::draw_simulation()
 
         window->draw(circle);
 
-        body->reset_pressure();
+        bodies->reset_pressure(i);
     }
 
     window->display();
@@ -191,7 +221,7 @@ void SimulationManager::draw_simulation()
 
 void SimulationManager::handle_window_events()
 {
-    window->handle_events(toggle_paused, draw_quadtree, draw_vectors, debug);
+    window->handle_events(toggle_paused, toggle_draw_quadtree, draw_vectors, debug);
 }
 
 void SimulationManager::print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case)
@@ -200,7 +230,7 @@ void SimulationManager::print_debug_info(unsigned long steps, double elapsed_tim
     double current_ratio_best = best_case / calculations_per_frame;
 
     std::cout << "########################################" << std::endl;
-    std::cout << std::left << std::setw(20) << "particles: " << bodies.size() << std::endl;
+    std::cout << std::left << std::setw(20) << "particles: " << bodies->get_size() << std::endl;
     std::cout << std::left << std::setw(20) << "elapsed time: " << elapsed_time << " ms" << std::endl;
     std::cout << std::left << std::setw(20) << "STEP: " << steps << std::endl;
     std::cout << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e3 * 1.0 / elapsed_time << std::endl;

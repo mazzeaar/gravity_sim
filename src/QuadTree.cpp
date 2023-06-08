@@ -1,20 +1,19 @@
 #include "QuadTree.h"
 
-QuadTree::QuadTree(Vec2 top_left, Vec2 bottom_right, Bodies* bodies) :
-    top_left(top_left), bottom_right(bottom_right)
+QuadTree::QuadTree(Bodies* bodies, Vec2 top_left, Vec2 bottom_right) :
+    top_left(top_left), bottom_right(bottom_right), bodies(bodies)
 {
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
 
-    bodies = bodies;
     NW = nullptr;
     NE = nullptr;
     SW = nullptr;
     SE = nullptr;
 }
 
-QuadTree::QuadTree(double xmin, double ymin, double xmax, double ymax, Bodies* bodies) :
-    QuadTree(Vec2(xmin, ymin), Vec2(xmax, ymax), bodies)
+QuadTree::QuadTree(Bodies* bodies, double xmin, double ymin, double xmax, double ymax) :
+    QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax))
 {}
 
 QuadTree::~QuadTree()
@@ -25,9 +24,17 @@ QuadTree::~QuadTree()
     if (SE != nullptr) delete SE;
 }
 
+bool QuadTree::contains(unsigned index)
+{
+    return this->bodies->pos[index].x >= top_left.x &&
+        this->bodies->pos[index].x <= bottom_right.x &&
+        this->bodies->pos[index].y >= top_left.y &&
+        this->bodies->pos[index].y <= bottom_right.y;
+}
+
 void QuadTree::insert(unsigned index)
 {
-    if (!this->contains(index) || bodies == nullptr)
+    if (!this->contains(index))
     {
         return;
     }
@@ -42,7 +49,7 @@ void QuadTree::insert(unsigned index)
     {
         if (NW == nullptr && !this->subdivide())
         {
-            // Merge bodies is not possible in this design, so do nothing
+            bodies->pressure[index] = (center_of_mass - bodies->pos[index]).length() * mass;
             return;
         }
         else
@@ -70,10 +77,10 @@ bool QuadTree::subdivide()
     }
     else
     {
-        this->NW = new QuadTree(top_left, (top_left + bottom_right) / 2.0, bodies);
-        this->NE = new QuadTree(Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0), bodies);
-        this->SW = new QuadTree(Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y), bodies);
-        this->SE = new QuadTree((top_left + bottom_right) / 2.0, bottom_right, bodies);
+        this->NW = new QuadTree(bodies, top_left, (top_left + bottom_right) / 2.0);
+        this->NE = new QuadTree(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0));
+        this->SW = new QuadTree(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
+        this->SE = new QuadTree(bodies, (top_left + bottom_right) / 2.0, bottom_right);
 
         return true;
     }
@@ -93,11 +100,6 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
 
     double quadrant_size = this->bottom_right.x - this->top_left.x;
 
-    if (distance < bodies->pressure[index])
-    {
-        bodies->pressure[index] = distance;
-    }
-
     if (distance < quadrant_size / theta) // Check if we are close enough
     {
         // We are close enough to this quadrant, so we will treat this quadrant as a single body.
@@ -115,11 +117,14 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
     }
 }
 
-void QuadTree::update(unsigned index, double theta, double G, double dt, unsigned long& calculations_per_frame)
+void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
-    bodies->reset_force(index);
-    this->compute_force(index, theta, G, calculations_per_frame);
-    bodies->update(index, dt);
+    for (size_t i = 0; i < bodies->get_size(); ++i)
+    {
+        this->compute_force(i, theta, G, calculations_per_frame);
+    }
+
+    bodies->update(dt);
 }
 
 void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
@@ -163,6 +168,7 @@ void QuadTree::clear()
         delete SE;
         SE = nullptr;
     }
+
     bodies = nullptr;
     body_index = -1;
     center_of_mass = Vec2(0, 0);

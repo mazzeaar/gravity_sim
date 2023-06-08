@@ -16,9 +16,13 @@ struct Bodies {
     std::vector<double> radius;
     std::vector<double> pressure;
 
+    size_t size;
+
     // Constructor that resizes the vectors to hold a specific number of bodies
     Bodies(size_t num_bodies)
     {
+        size = num_bodies;
+
         pos.resize(num_bodies, Vec2(0, 0));
         vel.resize(num_bodies, Vec2(0, 0));
         acc.resize(num_bodies, Vec2(0, 0));
@@ -28,22 +32,31 @@ struct Bodies {
     }
 
     // Method to add a force to a specific body
-    void add_force(size_t index, const Vec2& force)
+    inline void add_force(size_t index, const Vec2& force)
     {
         acc[index] += force / mass[index];
     }
 
     // Method to reset the force on a specific body
-    void reset_force(size_t index)
+    inline void reset_force(size_t index)
     {
         acc[index] = Vec2(0.0, 0.0);
     }
 
     // Method to update a specific body
-    void update(size_t index, double dt)
+    inline void update(size_t index, double dt)
     {
         vel[index] += acc[index] * dt;
         pos[index] += vel[index] * dt;
+    }
+
+    inline void update(double dt)
+    {
+        for (size_t i = 0; i < size; ++i)
+        {
+            vel[i] += acc[i] * dt;
+            pos[i] += vel[i] * dt;
+        }
     }
 
     // Method to get the pressure of a specific body
@@ -57,6 +70,9 @@ struct Bodies {
     {
         pressure[index] = std::numeric_limits<double>::max();
     }
+
+    // Method to get the size of the bodies vector
+    size_t get_size() { return size; }
 };
 
 class QuadTree {
@@ -67,17 +83,18 @@ private:
     double mass;
     double pressure_threshold;
 
-    int body_index;
+    int body_index = -1;
     Bodies* bodies;
 
     QuadTree* NW, * NE, * SW, * SE; // children
 
     // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
     void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
+    void insert(unsigned index);
 
 public:
-    QuadTree(Vec2 top_left, Vec2 bottom_right, Bodies* bodies);
-    QuadTree(double xmin, double ymin, double xmax, double ymax, Bodies* bodies);
+    QuadTree(Bodies* bodies, Vec2 top_left, Vec2 bottom_right);
+    QuadTree(Bodies* bodies, double xmin, double ymin, double xmax, double ymax);
 
     ~QuadTree();
 
@@ -88,25 +105,36 @@ public:
     bool subdivide();
 
     // inserts one body into this quadtree
-    void insert(unsigned index);
+    inline void insert(Bodies* bodies)
+    {
+        for (unsigned i = 0; i < bodies->get_size(); ++i)
+        {
+            if (this->contains(i))
+            {
+                std::cout << "inserting body " << i << std::endl;
+
+                insert(i);
+            }
+        }
+    }
 
     // updates all bodies in this quadtree
-    void update(unsigned index, double theta, double G, double dt, unsigned long& calculations_per_frame);
+    void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
 
     // returns the bounding boxes of all bodies in this quadtree
     // => is used for drawing the quadtree structure and is extremely inefficient and expensive to run
     void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
 
     // returns true if body is contained in this quadtree
-    inline bool contains(unsigned index)
-    {
-        return (bodies->pos[index].x >= top_left.x && bodies->pos[index].x <= bottom_right.x && bodies->pos[index].y >= top_left.y && bodies->pos[index].y <= bottom_right.y);
-    }
+    bool contains(unsigned index);
 
     // returns true if this quadtree has no children -> is a leaf
     inline bool is_leaf()
     {
-        return (NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr);
+        return NW == nullptr
+            && NE == nullptr
+            && SW == nullptr
+            && SE == nullptr;
     }
 };
 
