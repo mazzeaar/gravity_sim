@@ -1,6 +1,6 @@
 #include "QuadTree.h"
 
-QuadTree::QuadTree(Bodies** bodies, Vec2 top_left, Vec2 bottom_right) :
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right) :
     top_left(top_left), bottom_right(bottom_right)
 {
     this->bodies = bodies;
@@ -14,7 +14,7 @@ QuadTree::QuadTree(Bodies** bodies, Vec2 top_left, Vec2 bottom_right) :
     SE = nullptr;
 }
 
-QuadTree::QuadTree(Bodies** bodies, double xmin, double ymin, double xmax, double ymax) :
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax) :
     QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax))
 {}
 
@@ -28,17 +28,21 @@ QuadTree::~QuadTree()
 
 bool QuadTree::contains(unsigned index)
 {
-    return (*bodies)->pos.at(index).x >= top_left.x
-        && (*bodies)->pos.at(index).x <= bottom_right.x
-        && (*bodies)->pos.at(index).y >= top_left.y
-        && (*bodies)->pos.at(index).y <= bottom_right.y;
+    return bodies->pos.at(index).x >= top_left.x
+        && bodies->pos.at(index).x <= bottom_right.x
+        && bodies->pos.at(index).y >= top_left.y
+        && bodies->pos.at(index).y <= bottom_right.y;
 }
 
-void QuadTree::insert(Bodies** bodies)
+void QuadTree::insert(std::shared_ptr<Bodies> bodies)
 {
-    this->bodies = bodies;
+    if (bodies == nullptr || this->bodies != bodies)
+    {
+        std::cout << "Bodies is null" << std::endl;
+        return;
+    }
 
-    for (unsigned i = 0; i < (*bodies)->get_size(); ++i)
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         if (this->contains(i))
         {
@@ -57,14 +61,14 @@ void QuadTree::insert(unsigned index)
     if (body_index == -1)
     {
         body_index = index;
-        center_of_mass = (*bodies)->pos[index];
-        mass = (*bodies)->mass[index];
+        center_of_mass = bodies->pos[index];
+        mass = bodies->mass[index];
     }
     else
     {
         if (NW == nullptr && !this->subdivide())
         {
-            //bodies->pressure[index] = (center_of_mass - bodies->pos[index]).length() * mass;
+            bodies->pressure[index] = (center_of_mass - bodies->pos[index]).length() * mass;
             return;
         }
         else
@@ -80,8 +84,9 @@ void QuadTree::insert(unsigned index)
             }
         }
     }
-    center_of_mass = (center_of_mass * mass + (*bodies)->pos[index] * (*bodies)->mass[index]) / (mass + (*bodies)->mass[index]);
-    mass += (*bodies)->mass[index];
+
+    center_of_mass = (center_of_mass * mass + bodies->pos[index] * bodies->mass[index]) / (mass + bodies->mass[index]);
+    mass += bodies->mass[index];
 }
 
 bool QuadTree::subdivide()
@@ -111,7 +116,7 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
         return;
     }
 
-    Vec2 direction = this->center_of_mass - (*bodies)->pos[index];
+    Vec2 direction = this->center_of_mass - bodies->pos[index];
     double distance = direction.length();
 
     // quadrant size = width = height
@@ -120,9 +125,8 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
     if (distance <= quadrant_size / theta) // Check if we are close enough
     {
         // We are close enough to this quadrant, so we will treat this quadrant as a single body.
-        double force = (G * this->mass * (*bodies)->mass[index]) / (distance * distance + epsilon * epsilon);
-        Vec2 force_vector = direction.normalize() * force;
-        (*bodies)->add_force(index, force_vector);
+        double force = (G * this->mass * bodies->mass[index]) / (distance * distance + epsilon * epsilon);
+        bodies->add_force(index, direction.normalize() * force);
     }
     else
     {
@@ -135,12 +139,12 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
 
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
-    for (unsigned i = 0; i < (*bodies)->get_size(); ++i)
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         this->compute_force(i, theta, G, calculations_per_frame);
     }
 
-    (*bodies)->update(dt);
+    bodies->update(dt);
 }
 
 void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const

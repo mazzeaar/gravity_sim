@@ -17,7 +17,7 @@ private:
 
     Bodies* bodies;
     Window* window;
-    QuadTree* tree;
+    std::shared_ptr<QuadTree> tree;
     std::vector<sf::RectangleShape*> bounding_boxes;
 
     double G, theta, dt;

@@ -4,6 +4,8 @@ project(gravity_sim)
 
 include_directories(include)
 file(GLOB SOURCES "src/*.cpp")
+# include is one folder up
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_executable(gravity_sim ${SOURCES})
 

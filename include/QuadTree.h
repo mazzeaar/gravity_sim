@@ -102,17 +102,16 @@ private:
     double pressure_threshold;
 
     int body_index = -1;
-    Bodies** bodies;
+    std::shared_ptr<Bodies> bodies;
 
     QuadTree* NW, * NE, * SW, * SE; // children
 
     // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
     void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
-    void insert(unsigned index);
 
 public:
-    QuadTree(Bodies** bodies, Vec2 top_left, Vec2 bottom_right);
-    QuadTree(Bodies** bodies, double xmin, double ymin, double xmax, double ymax);
+    QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right);
+    QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax);
 
     ~QuadTree();
 
@@ -123,7 +122,8 @@ public:
     bool subdivide();
 
     // inserts one body into this quadtree
-    void insert(Bodies** bodies);
+    void insert(std::shared_ptr<Bodies> bodies);
+    void insert(unsigned index);
 
     // updates all bodies in this quadtree
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);

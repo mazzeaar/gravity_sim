@@ -3,16 +3,15 @@
 SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
     : G(G), theta(theta), dt(dt), toggle_paused(false), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
 {
-
-    bodies = new Bodies(1000);
-
     double xmin = 0.0;
     double ymin = 0.0;
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
 
-    Bodies** bodies_ptr = &bodies;
-    tree = new QuadTree(bodies_ptr, xmin, ymin, xmax, ymax);
+    bodies = new Bodies(1000);
+    std::shared_ptr<Bodies> bo = std::make_shared<Bodies>(bodies);
+
+    tree = std::make_shared<QuadTree>(bo, xmin, ymin, xmax, ymax);
     window = new Window(width, height, title);
 }
 
@@ -22,7 +21,6 @@ SimulationManager::~SimulationManager()
 
     delete bodies;
     delete window;
-    delete tree;
 
     if (toggle_verbose) std::cout << "==> successfully deleted window and tree" << std::endl;
 }
@@ -101,7 +99,7 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
     if (toggle_verbose) std::cout << "=> SimulationManager::update_simulation()" << std::endl;
 
     tree->clear();
-    tree->insert(&bodies);
+    tree->insert(std::shared_ptr<Bodies>(bodies));
     tree->update(theta, G, dt, calculations_per_frame);
 
     if (toggle_verbose) std::cout << "==> successfully updated simulation" << std::endl;
@@ -212,6 +210,7 @@ void SimulationManager::draw_simulation()
         circle.setRadius(1);
         circle.setPosition(bodies->pos[i].x - bodies->radius[i], bodies->pos[i].y - bodies->radius[i]);
 
+        /*
         // color depends on distance to nearest body -> "pressure"
         double normalized_pressure = pow((bodies->pressure[i] - min_distance) / (max_distance - min_distance), 0.5);
         sf::Color interpolatedColor;
@@ -235,7 +234,9 @@ void SimulationManager::draw_simulation()
         interpolatedColor.a = static_cast<sf::Uint8>(interpolatedColor.a * (0.6 + (0.4 * normalized_pressure)));
 
         circle.setFillColor(interpolatedColor);
+        */
 
+        circle.setFillColor(sf::Color::White);
         window->draw(circle);
 
         bodies->reset_pressure(i);

@@ -24,7 +24,7 @@ int main()
     SimulationManager* simulation_manager = new SimulationManager(width, height, "N-Body Simulation", G, theta, dt);
 
     simulation_manager->set_debug(false);
-    simulation_manager->set_verbose(false);
+    simulation_manager->set_verbose(true);
 
     simulation_manager->set_draw_vectors(false);
     simulation_manager->set_draw_quadtree(false);
