@@ -26,6 +26,8 @@ SimulationManager::~SimulationManager()
     if ( toggle_verbose ) std::cout << "==> successfully deleted window and tree" << std::endl;
 }
 
+// TODO - generate particles with enums. e.g. spiral, square, etc.
+// TODO - make the particles more realistic
 void SimulationManager::add_bodies(unsigned count, int max_mass)
 {
     if ( toggle_verbose )
