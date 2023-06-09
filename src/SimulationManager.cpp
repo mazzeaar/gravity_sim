@@ -1,30 +1,77 @@
 #include "SimulationManager.h"
 
-SimulationManager::SimulationManager(int width, int height, const char* title, double G, double theta, double dt)
-    : G(G), theta(theta), dt(dt), toggle_paused(false), draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
+SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
+    : G(G), theta(theta), dt(dt), toggle_paused(false), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
 {
-    window = new Window(width, height, title);
     double xmin = 0.0;
     double ymin = 0.0;
     double xmax = static_cast<double>(width);
     double ymax = static_cast<double>(height);
-    tree = new QuadTree(xmin, ymin, xmax, ymax);
+
+    bodies = std::make_shared<Bodies>(1000);
+    tree = std::make_shared<QuadTree>(bodies, xmin, ymin, xmax, ymax);
+
+    window = new Window(width, height, title);
 }
 
 SimulationManager::~SimulationManager()
 {
+    if (toggle_verbose) std::cout << "=> SimulationManager::~SimulationManager()" << std::endl;
+
+    bodies = nullptr;
+    tree = nullptr;
     delete window;
-    delete tree;
+
+    if (toggle_verbose) std::cout << "==> successfully deleted window and tree" << std::endl;
 }
 
-void SimulationManager::start()
+void SimulationManager::add_bodies(unsigned count, int max_mass)
 {
-    double worst_case = bodies.size() * bodies.size();
-    double best_case = bodies.size() * log2(bodies.size());
+    if (toggle_verbose)
+    {
+        std::cout << "=> SimulationManager::add_bodies(" << count << ", " << max_mass << ")" << std::endl;
+    }
+
+    if (count > bodies->get_size())
+    {
+        bodies->resize(count);
+    }
+
+    for (unsigned i = 0; i < count; ++i)
+    {
+        bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
+        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
+
+        double x = rand() % (3 * window->get_width() / 5) + window->get_width() / 5;
+        double y = rand() % (3 * window->get_height() / 5) + window->get_height() / 5;
+
+        bodies->pos[i] = Vec2(x, y);
+
+        double angle = atan2(y - window->get_height() / 2.0, x - window->get_width() / 2.0);
+
+        bodies->vel[i] = Vec2(-sin(angle), cos(angle)) * 10;
+
+        //bodies->vel[i] = Vec2(0.0, 0.0);
+    }
+
+    if (toggle_verbose)
+    {
+        std::cout << "==> successfully added " << count << " bodies" << std::endl;
+        // bodies->print();
+    }
+}
+
+void SimulationManager::run()
+{
+    if (toggle_verbose) std::cout << "=> SimulationManager::run()" << std::endl;
+
+    double worst_case = bodies->get_size() * bodies->get_size();
+    double best_case = bodies->get_size() * log2(bodies->get_size());
     unsigned long steps = 0;
 
     while (window->is_open())
     {
+        ++steps;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         handle_window_events();
 
@@ -35,93 +82,75 @@ void SimulationManager::start()
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
             total_calculations += calculations_per_frame;
-            if (debug)
+            if (toggle_debug)
             {
                 print_debug_info(steps, std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0, calculations_per_frame, worst_case, best_case);
             }
             calculations_per_frame = 0;
         }
+
         draw_simulation();
-    }
-}
-
-void SimulationManager::add_body_at_position(Vec2 position, Vec2 velocity, double mass)
-{
-    Body* new_body = new Body(position, velocity, mass);
-    add_body(new_body);
-}
-
-void SimulationManager::add_body(Body* body)
-{
-    bodies.push_back(body);
-    tree->insert(body);
-}
-
-void SimulationManager::add_bodies(std::vector<Body*>& bodies)
-{
-    // fix this wonky ass shit
-    for (Body* body : bodies)
-    {
-        add_body(body);
     }
 }
 
 void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
-    tree->add_bodies(bodies);
-    tree->update(bodies, theta, G, dt, calculations_per_frame);
+    if (toggle_verbose) std::cout << "=> SimulationManager::update_simulation()" << std::endl;
+
+    tree = nullptr;
+    tree = std::make_shared<QuadTree>(bodies, 0.0, 0.0, static_cast<double>(window->get_width()), static_cast<double>(window->get_height()));
+
+    tree->insert(bodies);
+    tree->update(theta, G, dt, calculations_per_frame);
+
+    if (toggle_verbose) std::cout << "==> successfully updated simulation" << std::endl;
 }
 
 sf::Color HSLtoRGB(float hue, float saturation, float lightness)
 {
+    // no pressure = green // more pressure = red
     float chroma = (1 - std::abs(2 * lightness - 1)) * saturation;
-    float huePrime = hue / 60.0f;
-    float x = chroma * (1 - std::abs(std::fmod(huePrime, 2) - 1));
+    float hue_prime = hue / 60.0;
 
-    float r, g, b;
-    if (huePrime < 1.0f)
+    float x = chroma * (1 - std::abs(fmod(hue_prime, 2) - 1));
+
+    float red = 0.0;
+    float green = 0.0;
+
+    if (hue_prime >= 0 && hue_prime < 1)
     {
-        r = chroma;
-        g = x;
-        b = 0;
+        red = chroma;
+        green = x;
     }
-    else if (huePrime < 2.0f)
+    else if (hue_prime >= 1 && hue_prime < 2)
     {
-        r = x;
-        g = chroma;
-        b = 0;
+        red = x;
+        green = chroma;
     }
-    else if (huePrime < 3.0f)
+    else if (hue_prime >= 2 && hue_prime < 3)
     {
-        r = 0;
-        g = chroma;
-        b = x;
+        green = chroma;
+        red = -x;
     }
-    else if (huePrime < 4.0f)
+    else if (hue_prime >= 3 && hue_prime < 4)
     {
-        r = 0;
-        g = x;
-        b = chroma;
+        green = x;
+        red = -chroma;
     }
-    else if (huePrime < 5.0f)
+    else if (hue_prime >= 4 && hue_prime < 5)
     {
-        r = x;
-        g = 0;
-        b = chroma;
+        red = -chroma;
+        green = -x;
     }
-    else
+    else if (hue_prime >= 5 && hue_prime < 6)
     {
-        r = chroma;
-        g = 0;
-        b = x;
+        red = -x;
+        green = -chroma;
     }
 
-    float m = lightness - chroma * 0.5f;
-    float rgbOffset = m + chroma;
+    float m = lightness - chroma / 2.0;
 
-    return sf::Color(static_cast<sf::Uint8>((r + m) * 255),
-        static_cast<sf::Uint8>((g + m) * 255),
-        static_cast<sf::Uint8>((b + m) * 255));
+    return sf::Color((red + m) * 255, (green + m) * 255, (m) * 255);
 }
 
 void SimulationManager::draw_simulation()
@@ -129,7 +158,7 @@ void SimulationManager::draw_simulation()
     window->clear();
 
     // draw the quadtree
-    if (draw_quadtree)
+    if (toggle_draw_quadtree)
     {
         bounding_boxes.clear();
         tree->get_bounding_rectangles(bounding_boxes);
@@ -141,16 +170,16 @@ void SimulationManager::draw_simulation()
     }
 
     // draw the vectors
-    if (draw_vectors)
+    if (toggle_draw_vectors)
     {
-        for (Body* body : bodies)
+        for (unsigned i = 0; i < bodies->get_size(); ++i)
         {
-            double angle = atan2(body->vel.y, body->vel.x);
-            double length = body->vel.length();
+            double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
+            double length = bodies->vel[i].length() + 15;
 
             sf::Vertex line[] = {
-                sf::Vertex(sf::Vector2f(body->pos.x, body->pos.y)),
-                sf::Vertex(sf::Vector2f(body->pos.x + cos(angle) * length, body->pos.y + sin(angle) * length))
+                sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
+                sf::Vertex(sf::Vector2f(bodies->pos[i].x + cos(angle) * length, bodies->pos[i].y + sin(angle) * length))
             };
 
             line[0].color.a *= 0.3;
@@ -162,58 +191,42 @@ void SimulationManager::draw_simulation()
 
     // find the min and max distance, gets abused for pressure
     double min_distance = std::numeric_limits<double>::max();
-    double max_distance = std::numeric_limits<double>::min();
-    for (Body* body : bodies)
+    double max_distance = 0.0;
+
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
-        double distance = body->pressure;
+        double distance = bodies->pressure[i];
         min_distance = std::min(min_distance, distance);
-        if (distance != std::numeric_limits<double>::max()) max_distance = std::max(max_distance, distance);
+        max_distance = std::max(max_distance, distance);
     }
 
     // draw bodies
-    for (Body* body : bodies)
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         sf::CircleShape circle;
-        circle.setRadius(body->radius);
-        circle.setPosition(body->pos.x - body->radius, body->pos.y - body->radius);
+        double radius = bodies->radius[i];
+        circle.setRadius(radius);
+        circle.setPosition(sf::Vector2f(bodies->pos[i].x - radius, bodies->pos[i].y - radius));
 
-        // color depends on distance to nearest body -> "pressure"
-        double normalized_pressure = pow((body->pressure - min_distance) / (max_distance - min_distance), 0.5);
-        sf::Color interpolatedColor;
-
-        if (normalized_pressure <= 0.05)
-        {
-            interpolatedColor = sf::Color(255, 255, 255);
-        }
-        else if (normalized_pressure <= 0.5)
-        {
-            float hue = 240.0f * (0.5f - normalized_pressure) / 0.5f;  // Interpolate hue from 240 (blue) to 0 (red)
-            interpolatedColor = HSLtoRGB(hue, 100, 50);
-        }
-        else
-        {
-            float hue = 0.0f;  // Red
-            float saturation = 100.0f * (normalized_pressure - 0.5f) / 0.5f;  // Interpolate saturation from 0 to 100
-            interpolatedColor = HSLtoRGB(hue, saturation, 100);
-        }
-
-        interpolatedColor.a = static_cast<sf::Uint8>(interpolatedColor.a * (0.6 + (0.4 * normalized_pressure)));
+        // interpolate between red and blue
+        double hue = 240.0 * (bodies->pressure[i] - min_distance) / (max_distance - min_distance);
+        sf::Color interpolatedColor = HSLtoRGB(hue, 1.0, 0.5);
 
         circle.setFillColor(interpolatedColor);
 
         window->draw(circle);
 
-        body->reset_pressure();
+        bodies->reset_pressure(i);
     }
 
     window->display();
-    tree->clear();
 }
-
 
 void SimulationManager::handle_window_events()
 {
-    window->handle_events(toggle_paused, draw_quadtree, draw_vectors, debug);
+    if (toggle_verbose) std::cout << "=> SimulationManager::handle_window_events()" << std::endl;
+    window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug, dt);
+    if (toggle_verbose) std::cout << "==> successfully handled window events" << std::endl;
 }
 
 void SimulationManager::print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case)
@@ -222,7 +235,7 @@ void SimulationManager::print_debug_info(unsigned long steps, double elapsed_tim
     double current_ratio_best = best_case / calculations_per_frame;
 
     std::cout << "########################################" << std::endl;
-    std::cout << std::left << std::setw(20) << "particles: " << bodies.size() << std::endl;
+    std::cout << std::left << std::setw(20) << "particles: " << bodies->get_size() << std::endl;
     std::cout << std::left << std::setw(20) << "elapsed time: " << elapsed_time << " ms" << std::endl;
     std::cout << std::left << std::setw(20) << "STEP: " << steps << std::endl;
     std::cout << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e3 * 1.0 / elapsed_time << std::endl;

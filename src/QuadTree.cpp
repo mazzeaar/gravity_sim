@@ -1,139 +1,231 @@
 #include "QuadTree.h"
 
-QuadTree::QuadTree(Vec2 top_left, Vec2 bottom_right) :
+/*
+------------------------------------------
+|        constructors/destructor         |
+------------------------------------------
+*/
+
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right) :
     top_left(top_left), bottom_right(bottom_right)
 {
+    this->bodies = bodies;
+    total_bodies = 0;
+
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
 
-    body = nullptr;
     NW = nullptr;
     NE = nullptr;
     SW = nullptr;
     SE = nullptr;
 }
 
-QuadTree::QuadTree(double xmin, double ymin, double xmax, double ymax) :
-    QuadTree(Vec2(xmin, ymin), Vec2(xmax, ymax))
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax) :
+    QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax))
 {}
 
 QuadTree::~QuadTree()
 {
-    if (NW != nullptr) delete NW;
-    if (NE != nullptr) delete NE;
-    if (SW != nullptr) delete SW;
-    if (SE != nullptr) delete SE;
+    NW = nullptr;
+    NE = nullptr;
+    SW = nullptr;
+    SE = nullptr;
 }
 
-void QuadTree::insert(Body*& body)
+void QuadTree::clear()
 {
-    if (!this->contains(body))
+    NW = nullptr;
+    NE = nullptr;
+    SW = nullptr;
+    SE = nullptr;
+
+    body_index = -1;
+    center_of_mass = Vec2(0, 0);
+    mass = 0.0;
+
+    total_bodies = 0;
+}
+
+
+/*
+------------------------------------------
+|             boolean checks             |
+------------------------------------------
+*/
+
+bool QuadTree::contains(unsigned index)
+{
+    return bodies->pos[index].x >= top_left.x
+        && bodies->pos[index].x <= bottom_right.x
+        && bodies->pos[index].y >= top_left.y
+        && bodies->pos[index].y <= bottom_right.y;
+}
+
+bool QuadTree::subdivide()
+{
+    const double threshold = 0.1;
+
+    if (bottom_right.x - top_left.x < threshold || bottom_right.y - top_left.y < threshold)
     {
-        // TODO - delete body
+        return false;
+    }
+
+    this->NW = std::make_unique<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0);
+    this->NE = std::make_unique<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0));
+    this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
+    this->SE = std::make_unique<QuadTree>(bodies, (top_left + bottom_right) / 2.0, bottom_right);
+
+    return true;
+}
+
+
+/*
+------------------------------------------
+|                 insert                 |
+------------------------------------------
+*/
+
+void QuadTree::insert(std::shared_ptr<Bodies> bodies)
+{
+    if (bodies == nullptr || this->bodies != bodies)
+    {
+        // Exception handling can be improved by using an exception class and providing more specific error information.
+        throw std::invalid_argument("Invalid bodies parameter in QuadTree::insert");
+    }
+
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
+    {
+        insert(i);
+    }
+}
+
+void QuadTree::insert(unsigned index)
+{
+    // If the body is not in this quadrant, do not add it.
+    if (!contains(index))
+    {
         return;
     }
 
-    if (this->body == nullptr)
-    {
-        this->body = body;
-        center_of_mass = body->pos;
-        mass = body->mass;
-    }
-    else
-    {
-        if (NW == nullptr) this->subdivide();
+    ++total_bodies;
 
-        if (NW->contains(body)) NW->insert(body);
-        else if (NE->contains(body)) NE->insert(body);
-        else if (SW->contains(body)) SW->insert(body);
-        else if (SE->contains(body)) SE->insert(body);
-        else
+    if (this->mass == 0)
+    {
+        this->body_index = index;
+        this->mass = bodies->mass[index];
+        this->center_of_mass = bodies->pos[index];
+        return;
+    }
+
+    this->center_of_mass = (this->center_of_mass * this->mass + bodies->pos[index] * bodies->mass[index]) / (this->mass + bodies->mass[index]);
+    this->mass += bodies->mass[index];
+
+    if (this->is_leaf())
+    {
+        if (this->body_index != -1)
         {
-            std::cout << "Body out of bounds :(" << std::endl;
-            return;
+            if (this->subdivide())
+            {
+                // move body thats already contained to new quadrant
+                unsigned old_index = this->body_index;
+                this->body_index = -1;
+
+                this->insert(old_index);
+                this->insert(index);
+            }
+            else
+            {
+                // if we can't subdivide, we have to merge the bodies
+                bodies->merge_bodies(this->body_index, index);
+                bodies->pressure[body_index] += 1;
+                return;
+            }
         }
 
-        center_of_mass = (center_of_mass * mass + body->pos * body->mass) / (mass + body->mass);
-        mass += body->mass;
+        // if no body is contained, we can just add the body
+        this->body_index = index;
+        return;
     }
+
+    // if its not a leaf, we insert the body into the children
+    NW->insert(index);
+    NE->insert(index);
+    SW->insert(index);
+    SE->insert(index);
 }
 
-void QuadTree::subdivide()
-{
-    // TODO - add limit to avoid infinite recursion/subdivision
-    this->NW = new QuadTree(top_left, (top_left + bottom_right) / 2.0);
-    this->NE = new QuadTree(Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0));
-    this->SW = new QuadTree(Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
-    this->SE = new QuadTree((top_left + bottom_right) / 2.0, bottom_right);
-}
+/*
+------------------------------------------
+|                 update                 |
+------------------------------------------
+*/
 
-void QuadTree::compute_force(Body* body, double theta, double G, unsigned long& calculations_per_frame)
+void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
 {
-    double epsilon = 0.5; // softening factor to prevent force go brrrrr
-
-    if (this->body == nullptr || this->body == body)
+    if (this->mass == 0 || this->body_index == index)
     {
         return;
     }
 
-    Vec2 direction = this->center_of_mass - body->pos;
-    double distance = direction.length();
+    Vec2 direction = this->center_of_mass - bodies->pos[index];
+    double squared_distance = direction.squared_length();
+    double squared_size = (bottom_right - top_left).squared_length();
 
-    double quadrant_size = this->bottom_right.x - this->top_left.x;
-
-    if (distance < body->pressure)
-    {
-        body->pressure = distance;
-    }
-
-    if (quadrant_size / distance < theta || this->NW == nullptr)
+    if (squared_size / squared_distance < theta || is_leaf())
     {
         ++calculations_per_frame;
-        double magnitude = G * this->mass * body->mass / (distance * distance + epsilon * epsilon);
-        Vec2 force = direction * magnitude;
-        body->add_force(force);
+        double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
+        bodies->add_force(index, direction * force);
     }
     else
     {
-        NW->compute_force(body, theta, G, calculations_per_frame);
-        NE->compute_force(body, theta, G, calculations_per_frame);
-        SW->compute_force(body, theta, G, calculations_per_frame);
-        SE->compute_force(body, theta, G, calculations_per_frame);
+        compute_force_on_children(index, theta, G, calculations_per_frame);
     }
 }
 
-void QuadTree::update(std::vector<Body*>& bodies, double theta, double G, double dt, unsigned long& calculations_per_frame)
+double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance)
 {
-    for (int i = 0; i < bodies.size(); i++)
-    {
-        Body* body = bodies[i];
-        body->reset_force();
-        this->compute_force(body, theta, G, calculations_per_frame);
-    }
-#pragma omp parallel for
-    for (int i = 0; i < bodies.size(); i++)
-    {
-        Body* body = bodies[i];
-        body->update(dt);
-    }
+    const double epsilon_squared = 0.4; // softening factor, else force goes BRRRRRT
+    return G * mass1 * mass2 / (squared_distance + epsilon_squared);
 }
 
-void QuadTree::add_bodies(std::vector<Body*>& bodies)
+void QuadTree::compute_force_on_children(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
 {
-    for (Body* body : bodies)
-    {
-        this->insert(body);
-    }
+    NW->compute_force(index, theta, G, calculations_per_frame);
+    NE->compute_force(index, theta, G, calculations_per_frame);
+    SW->compute_force(index, theta, G, calculations_per_frame);
+    SE->compute_force(index, theta, G, calculations_per_frame);
 }
+
+void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
+{
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
+    {
+        compute_force(i, theta, G, calculations_per_frame);
+    }
+
+    bodies->remove_merged_bodies();
+    bodies->update(dt);
+}
+
+
+/*
+------------------------------------------
+|                 print                  |
+------------------------------------------
+*/
 
 void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
 {
     sf::RectangleShape* rect = new sf::RectangleShape(); // Create a dynamic object
+
     rect->setSize(sf::Vector2f(bottom_right.x - top_left.x, bottom_right.y - top_left.y));
     rect->setPosition(sf::Vector2f(top_left.x, top_left.y));
     rect->setFillColor(sf::Color::Transparent);
     rect->setOutlineColor(sf::Color::Green);
     rect->setOutlineThickness(1.0f);
+
     rectangles.push_back(rect);
 
     if (NW != nullptr)
@@ -143,36 +235,4 @@ void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectang
         SW->get_bounding_rectangles(rectangles);
         SE->get_bounding_rectangles(rectangles);
     }
-}
-
-void QuadTree::clear()
-{
-    if (NW != nullptr)
-    {
-        NW->clear();
-        delete NW;
-        NW = nullptr;
-    }
-    if (NE != nullptr)
-    {
-        NE->clear();
-        delete NE;
-        NE = nullptr;
-    }
-    if (SW != nullptr)
-    {
-        SW->clear();
-        delete SW;
-        SW = nullptr;
-    }
-    if (SE != nullptr)
-    {
-        SE->clear();
-        delete SE;
-        SE = nullptr;
-    }
-
-    body = nullptr;
-    center_of_mass = Vec2(0, 0);
-    mass = 0.0;
 }

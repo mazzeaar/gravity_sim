@@ -3,6 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <iostream>
 
 class Window {
 private:
@@ -37,7 +38,9 @@ public:
     int get_width();
     int get_height();
 
-    void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors, bool& toggle_debug);
+    void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree,
+        bool& toggle_draw_vectors, bool& toggle_debug,
+        double& dt);
 };
 
 #endif // WINDOW_H
