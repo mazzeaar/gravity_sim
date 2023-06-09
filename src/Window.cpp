@@ -67,7 +67,9 @@ bool Window::is_open()
     return window->isOpen();
 }
 
-void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors, bool& toggle_debug, double& dt)
+void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree,
+    bool& toggle_draw_vectors, bool& toggle_debug,
+    double& dt, double& G)
 {
     sf::Event event;
     sf::RenderWindow& currentWindow = *window;  // Store a reference to the window
@@ -115,6 +117,23 @@ void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool&
             {
                 dt = std::max(0.05, dt - 0.05);
                 std::cout << "decreased dt to " << dt << std::endl;
+            }
+            else if (event.key.code == sf::Keyboard::Up)
+            {
+                G *= 2;
+                std::cout << "increased G to " << G << std::endl;
+            }
+            else if (event.key.code == sf::Keyboard::Down)
+            {
+                G /= 2;
+                std::cout << "decreased G to " << G << std::endl;
+            }
+            else if (event.key.code == sf::Keyboard::Return)
+            {
+                G = 6.67408e-3;
+                dt = 0.1;
+                std::cout << "reset G to " << G << std::endl;
+                std::cout << "reset dt to " << dt << std::endl;
             }
         }
     }

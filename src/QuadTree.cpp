@@ -88,12 +88,6 @@ bool QuadTree::subdivide()
 
 void QuadTree::insert(std::shared_ptr<Bodies> bodies)
 {
-    if (bodies == nullptr || this->bodies != bodies)
-    {
-        // Exception handling can be improved by using an exception class and providing more specific error information.
-        throw std::invalid_argument("Invalid bodies parameter in QuadTree::insert");
-    }
-
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         insert(i);
@@ -127,7 +121,7 @@ void QuadTree::insert(unsigned index)
         {
             if (this->subdivide())
             {
-                // move body thats already contained to new quadrant
+                // move present body to new quadrant
                 unsigned old_index = this->body_index;
                 this->body_index = -1;
 

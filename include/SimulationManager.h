@@ -61,6 +61,9 @@ public:
     inline void increase_dt(double dt) { this->dt += 0.05; }
     inline void decrease_dt(double dt) { this->dt = std::max(0.05, this->dt - 0.05); }
 
+    inline void increase_G(double G) { this->G += 0.1; }
+    inline void decrease_G(double G) { this->G = std::max(0.0, this->G - 0.1); }
+
     void add_bodies(unsigned count = 8000, int max_mass = 6);
 };
 

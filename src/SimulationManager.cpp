@@ -47,11 +47,12 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
         bodies->pos[i] = Vec2(x, y);
 
-        double angle = atan2(y - window->get_height() / 2.0, x - window->get_width() / 2.0);
+        // bodies should rotate around the center of the screen, velocity is proportional to the distance to the center
+        Vec2 center(window->get_width() / 2.0, window->get_height() / 2.0);
+        Vec2 direction = (bodies->pos[i] - center).normalize();
+        Vec2 perpendicular = Vec2(-direction.y, direction.x);
 
-        bodies->vel[i] = Vec2(-sin(angle), cos(angle)) * 10;
-
-        //bodies->vel[i] = Vec2(0.0, 0.0);
+        bodies->vel[i] = perpendicular * bodies->pos[i].dist(center) * 0.03;
     }
 
     if (toggle_verbose)
@@ -225,7 +226,7 @@ void SimulationManager::draw_simulation()
 void SimulationManager::handle_window_events()
 {
     if (toggle_verbose) std::cout << "=> SimulationManager::handle_window_events()" << std::endl;
-    window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug, dt);
+    window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug, dt, G);
     if (toggle_verbose) std::cout << "==> successfully handled window events" << std::endl;
 }
 

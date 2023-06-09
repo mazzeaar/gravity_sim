@@ -40,7 +40,7 @@ public:
 
     void handle_events(bool& toggle_pause, bool& toggle_draw_quadtree,
         bool& toggle_draw_vectors, bool& toggle_debug,
-        double& dt);
+        double& dt, double& G);
 };
 
 #endif // WINDOW_H
