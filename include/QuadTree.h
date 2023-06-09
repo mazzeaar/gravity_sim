@@ -17,6 +17,8 @@ public:
     std::vector<double> radius;
     std::vector<double> pressure;
 
+    std::vector<unsigned> density;
+
     std::vector<bool> to_be_deleted;
 
     unsigned size;
@@ -29,20 +31,22 @@ public:
         pos.resize(num_bodies);
         vel.resize(num_bodies);
         acc.resize(num_bodies, Vec2(0.0, 0.0));
+
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
         pressure.resize(num_bodies, 0.0);
+        density.resize(num_bodies, 0);
 
         to_be_deleted.resize(num_bodies, false);
     }
 
-    // Method to add a force to a specific body
+    // acceleration += force / mass
     inline void add_force(unsigned index, const Vec2& force)
     {
         acc[index] += force / mass[index];
     }
 
-    // Method to reset the force on a specific body
+    // acceleration = (0, 0)
     inline void reset_force(unsigned index)
     {
         acc[index] = Vec2(0.0, 0.0);
@@ -61,6 +65,7 @@ public:
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
         pressure.resize(num_bodies, 0.0);
+        density.resize(num_bodies, 0);
 
         to_be_deleted.resize(num_bodies, false);
     }
@@ -78,6 +83,7 @@ public:
                 mass.erase(mass.begin() + i);
                 radius.erase(radius.begin() + i);
                 pressure.erase(pressure.begin() + i);
+                density.erase(density.begin() + i);
 
                 to_be_deleted.erase(to_be_deleted.begin() + i);
                 --size;
@@ -104,18 +110,23 @@ public:
         {
             if (mass[i] == 0.0) continue;
 
-            vel[i] = vel[i] + acc[i] * dt;
+            // Update velocity half a step forward using the current acceleration and the time step
+            vel[i] = vel[i] + acc[i] * (0.5 * dt);
+
+            // Update position using the updated velocity and the time step
             pos[i] = pos[i] + vel[i] * dt;
 
+            // Reset the force before each iteration
             reset_force(i);
         }
     }
 
-    double get_pressure(unsigned index) { return pressure[index]; }
-    void reset_pressure(unsigned index) {}
-    unsigned get_size() { return size; }
 
-    void print() const
+    inline double get_pressure(unsigned index) { return pressure[index]; }
+    inline void reset_pressure(unsigned index) {}
+    inline unsigned get_size() { return size; }
+
+    inline void print() const
     {
         for (unsigned i = 0; i < size; ++i)
         {
@@ -123,26 +134,31 @@ public:
         }
     }
 
-    void print(unsigned index) const
+    inline void print(unsigned index) const
     {
-        std::cout << "===> body " << index << ": " << std::endl;
-        std::cout << "     pos: " << pos[index] << std::endl;
-        std::cout << "     vel: " << vel[index] << std::endl;
-        std::cout << "     acc: " << acc[index] << std::endl;
-        std::cout << "     mass: " << mass[index] << std::endl;
-        std::cout << "     radius: " << radius[index] << std::endl;
-        std::cout << "     pressure: " << pressure[index] << std::endl;
-        std::cout << "     to_be_deleted: " << to_be_deleted[index] << std::endl;
+        std::cout << "========================================" << std::endl;
+        std::cout << "body: " << index << ": " << std::endl;
+        std::cout << " - pos: " << pos[index] << std::endl;
+        std::cout << " - vel: " << vel[index] << std::endl;
+        std::cout << " - acc: " << acc[index] << std::endl;
+        std::cout << " - mass: " << mass[index] << std::endl;
+        std::cout << " - radius: " << radius[index] << std::endl;
+        std::cout << " - pressure: " << pressure[index] << std::endl;
+        std::cout << " - to_be_deleted: " << to_be_deleted[index] << std::endl;
     }
 };
 
+
 class QuadTree {
+
 private:
     Vec2 top_left, bottom_right; //bounding box
 
     Vec2 center_of_mass;
     double mass;
     double pressure_threshold;
+
+    unsigned depth;
     long total_bodies;
 
     int body_index = -1;
@@ -163,38 +179,27 @@ private:
     void compute_force_on_children(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
 
 public:
+
     QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right);
     QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax);
 
     ~QuadTree();
-
-    // deletes all children and bodies
     void clear();
+
     // splits this quadtree into 4 children
     bool subdivide();
-    // inserts bodies into this quadtree
     void insert(std::shared_ptr<Bodies> bodies);
     void insert(unsigned index);
 
+    bool contains(unsigned index);
+    inline bool is_leaf() { return NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr; }
+    inline long get_total_bodies() { return total_bodies; }
+
     // updates all bodies in this quadtree
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
+
     // returns the bounding boxes of all bodies in this quadtree
-    // => is used for drawing the quadtree structure and is extremely inefficient and expensive to run
     void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
-
-    // returns true if body is contained in this quadtree
-    bool contains(unsigned index);
-
-    // returns true if this quadtree has no children -> is a leaf
-    inline bool is_leaf()
-    {
-        return NW == nullptr
-            && NE == nullptr
-            && SW == nullptr
-            && SE == nullptr;
-    }
-
-    inline long get_total_bodies() { return total_bodies; }
 };
 
 #endif // QUADTREE_H

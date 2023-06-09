@@ -1,16 +1,15 @@
 #include "QuadTree.h"
 
-/*
-------------------------------------------
+/*----------------------------------------
 |        constructors/destructor         |
-------------------------------------------
-*/
+-----------------------------------------*/
 
 QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right) :
     top_left(top_left), bottom_right(bottom_right)
 {
     this->bodies = bodies;
-    total_bodies = 0;
+
+    depth = 0;
 
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
@@ -43,16 +42,13 @@ void QuadTree::clear()
     body_index = -1;
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
-
-    total_bodies = 0;
+    depth = 0;
 }
 
 
-/*
-------------------------------------------
+/*----------------------------------------
 |             boolean checks             |
-------------------------------------------
-*/
+-----------------------------------------*/
 
 bool QuadTree::contains(unsigned index)
 {
@@ -76,15 +72,18 @@ bool QuadTree::subdivide()
     this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
     this->SE = std::make_unique<QuadTree>(bodies, (top_left + bottom_right) / 2.0, bottom_right);
 
+    NW->depth = depth + 1;
+    NE->depth = depth + 1;
+    SW->depth = depth + 1;
+    SE->depth = depth + 1;
+
     return true;
 }
 
 
-/*
-------------------------------------------
+/*----------------------------------------
 |                 insert                 |
-------------------------------------------
-*/
+-----------------------------------------*/
 
 void QuadTree::insert(std::shared_ptr<Bodies> bodies)
 {
@@ -102,13 +101,14 @@ void QuadTree::insert(unsigned index)
         return;
     }
 
-    ++total_bodies;
-
     if (this->mass == 0)
     {
         this->body_index = index;
         this->mass = bodies->mass[index];
         this->center_of_mass = bodies->pos[index];
+
+        bodies->density[index] = depth;
+
         return;
     }
 
@@ -132,7 +132,6 @@ void QuadTree::insert(unsigned index)
             {
                 // if we can't subdivide, we have to merge the bodies
                 bodies->merge_bodies(this->body_index, index);
-                bodies->pressure[body_index] += 1;
                 return;
             }
         }
@@ -149,11 +148,9 @@ void QuadTree::insert(unsigned index)
     SE->insert(index);
 }
 
-/*
-------------------------------------------
+/*----------------------------------------
 |                 update                 |
-------------------------------------------
-*/
+-----------------------------------------*/
 
 void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
 {
@@ -204,11 +201,9 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
 }
 
 
-/*
-------------------------------------------
+/*----------------------------------------
 |                 print                  |
-------------------------------------------
-*/
+-----------------------------------------*/
 
 void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
 {

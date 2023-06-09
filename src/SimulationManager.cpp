@@ -1,7 +1,7 @@
 #include "SimulationManager.h"
 
 SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
-    : G(G), theta(theta), dt(dt), toggle_paused(false), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
+    : G(G), theta(theta), dt(dt), toggle_paused(true), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
 {
     double xmin = 0.0;
     double ymin = 0.0;
@@ -12,6 +12,7 @@ SimulationManager::SimulationManager(const int width, const int height, const ch
     tree = std::make_shared<QuadTree>(bodies, xmin, ymin, xmax, ymax);
 
     window = new Window(width, height, title);
+    steps = 0;
 }
 
 SimulationManager::~SimulationManager()
@@ -62,35 +63,72 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
     }
 }
 
+// ------------------------------------------------------------------------
+// ====================================
+// ========= SIMULATION LOOP ==========
+// ====================================
+
+void SimulationManager::print_start_info()
+{
+    std::cout << std::endl << std::endl;
+    std::cout << "========== N-Body Simulation ===========" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "========= PRESS SPACE TO START =========" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "| Number of bodies: " << bodies->get_size() << std::endl;
+    std::cout << "| G: " << G << std::endl;
+    std::cout << "| theta: " << theta << std::endl;
+    std::cout << "| dt: " << dt << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "| 'space' | 'q'  | 'v'  | 'd'   | 'esc' |" << std::endl;
+    std::cout << "|  pause  | quad | vect | debug | exit  |" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "|  'left' |  'right' |  'up'  |  'down' |" << std::endl;
+    std::cout << "|   dt -  |   dt +   |   G -  |   G +   |" << std::endl;
+    std::cout << "========================================" << std::endl;
+}
+
 void SimulationManager::run()
 {
     if (toggle_verbose) std::cout << "=> SimulationManager::run()" << std::endl;
 
+    print_start_info();
+    update_simulation(calculations_per_frame);
+
     double worst_case = bodies->get_size() * bodies->get_size();
     double best_case = bodies->get_size() * log2(bodies->get_size());
-    unsigned long steps = 0;
+
+    std::chrono::steady_clock::time_point begin, end;
 
     while (window->is_open())
     {
+
         ++steps;
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         handle_window_events();
 
         if (!toggle_paused)
         {
+            begin = std::chrono::steady_clock::now();
             update_simulation(calculations_per_frame);
+            end = std::chrono::steady_clock::now();
 
-            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
 
             total_calculations += calculations_per_frame;
+
             if (toggle_debug)
             {
-                print_debug_info(steps, std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0, calculations_per_frame, worst_case, best_case);
+                print_debug_info();
             }
             calculations_per_frame = 0;
         }
 
+        begin = std::chrono::steady_clock::now();
         draw_simulation();
+        end = std::chrono::steady_clock::now();
+
+        elapsed_time_graphics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin).count();
+        total_frame_time = elapsed_time_physics + elapsed_time_graphics;
     }
 }
 
@@ -107,9 +145,58 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
     if (toggle_verbose) std::cout << "==> successfully updated simulation" << std::endl;
 }
 
+void SimulationManager::draw_simulation()
+{
+    window->clear();
+
+    draw_quadtree();
+    draw_vectors();
+
+    draw_bodies();
+
+    window->display();
+}
+// ------------------------------------------------------------------------
+// ====================================
+// ========= DRAW FUNCTIONS ===========
+// ====================================
+
+void SimulationManager::draw_vectors()
+{
+    if (!toggle_draw_vectors) return;
+
+    for (unsigned i = 0; i < bodies->get_size(); ++i)
+    {
+        double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
+        double length = bodies->vel[i].length() + 15;
+
+        sf::Vertex line[] = {
+            sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
+            sf::Vertex(sf::Vector2f(bodies->pos[i].x + cos(angle) * length, bodies->pos[i].y + sin(angle) * length))
+        };
+
+        line[0].color.a *= 0.3;
+        line[1].color.a *= 0.3;
+
+        window->draw(line, 2, sf::Lines);
+    }
+}
+
+void SimulationManager::draw_quadtree()
+{
+    if (!toggle_draw_quadtree) return;
+
+    bounding_boxes.clear();
+    tree->get_bounding_rectangles(bounding_boxes);
+
+    for (sf::RectangleShape* rectangle : bounding_boxes)
+    {
+        window->draw(*rectangle);
+    }
+}
+
 sf::Color HSLtoRGB(float hue, float saturation, float lightness)
 {
-    // no pressure = green // more pressure = red
     float chroma = (1 - std::abs(2 * lightness - 1)) * saturation;
     float hue_prime = hue / 60.0;
 
@@ -154,74 +241,58 @@ sf::Color HSLtoRGB(float hue, float saturation, float lightness)
     return sf::Color((red + m) * 255, (green + m) * 255, (m) * 255);
 }
 
-void SimulationManager::draw_simulation()
+void SimulationManager::draw_bodies()
 {
-    window->clear();
-
-    // draw the quadtree
-    if (toggle_draw_quadtree)
-    {
-        bounding_boxes.clear();
-        tree->get_bounding_rectangles(bounding_boxes);
-
-        for (sf::RectangleShape* rectangle : bounding_boxes)
-        {
-            window->draw(*rectangle);
-        }
-    }
-
-    // draw the vectors
-    if (toggle_draw_vectors)
-    {
-        for (unsigned i = 0; i < bodies->get_size(); ++i)
-        {
-            double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
-            double length = bodies->vel[i].length() + 15;
-
-            sf::Vertex line[] = {
-                sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
-                sf::Vertex(sf::Vector2f(bodies->pos[i].x + cos(angle) * length, bodies->pos[i].y + sin(angle) * length))
-            };
-
-            line[0].color.a *= 0.3;
-            line[1].color.a *= 0.3;
-
-            window->draw(line, 2, sf::Lines);
-        }
-    }
-
-    // find the min and max distance, gets abused for pressure
-    double min_distance = std::numeric_limits<double>::max();
-    double max_distance = 0.0;
-
+    unsigned max_density = 0;
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
-        double distance = bodies->pressure[i];
-        min_distance = std::min(min_distance, distance);
-        max_distance = std::max(max_distance, distance);
+        max_density = std::max(max_density, bodies->density[i]);
     }
 
-    // draw bodies
+    sf::CircleShape circle;
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
-        sf::CircleShape circle;
-        double radius = bodies->radius[i];
+        double radius = 1.0;
         circle.setRadius(radius);
-        circle.setPosition(sf::Vector2f(bodies->pos[i].x - radius, bodies->pos[i].y - radius));
+        circle.setPosition(bodies->pos[i].x - radius, bodies->pos[i].y - radius);
 
-        // interpolate between red and blue
-        double hue = 240.0 * (bodies->pressure[i] - min_distance) / (max_distance - min_distance);
-        sf::Color interpolatedColor = HSLtoRGB(hue, 1.0, 0.5);
+        // Normalize density to the range [0, 1]
+        double normalized_density = static_cast<double>(bodies->density[i]) / max_density;
 
-        circle.setFillColor(interpolatedColor);
+        // Apply sigmoid-shaped normalization
+        double sigmoid_factor = 20.0;  // Adjust this value for the desired shape
+        double sigmoid_normalized_density = 1.0 / (1.0 + std::exp(-sigmoid_factor * (normalized_density - 0.5)));
+
+        // Map the normalized density to the color range
+        sf::Color fill_color;
+        if (normalized_density <= 0.5)
+        {
+            // Brown/Blueish to Red/Yellow transition
+            unsigned blue_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density * sigmoid_normalized_density);
+            unsigned red_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density);
+            fill_color = sf::Color(red_component, blue_component, blue_component / 2);
+        }
+        else
+        {
+            // Red/Yellow to White transition
+            unsigned red_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density);
+            unsigned green_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density * sigmoid_normalized_density);
+            fill_color = sf::Color(red_component, green_component, 0);
+        }
+
+        // Set the transparency based on density
+        sf::Uint8 transparency = static_cast<sf::Uint8>(51u * bodies->density[i] / max_density);
+        fill_color.a = (transparency * 5 < 150) ? 150 : transparency * 5;
+        circle.setFillColor(fill_color);
 
         window->draw(circle);
-
-        bodies->reset_pressure(i);
     }
-
-    window->display();
 }
+
+// ------------------------------------------------------------------------
+// ====================================
+// ========= EVENT HANDLING ===========
+// ====================================
 
 void SimulationManager::handle_window_events()
 {
@@ -230,19 +301,33 @@ void SimulationManager::handle_window_events()
     if (toggle_verbose) std::cout << "==> successfully handled window events" << std::endl;
 }
 
-void SimulationManager::print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case)
+void SimulationManager::print_debug_info()
 {
-    double current_ratio_worst = worst_case / calculations_per_frame;
-    double current_ratio_best = best_case / calculations_per_frame;
+    std::cout << get_debug_info();
+}
 
-    std::cout << "########################################" << std::endl;
-    std::cout << std::left << std::setw(20) << "particles: " << bodies->get_size() << std::endl;
-    std::cout << std::left << std::setw(20) << "elapsed time: " << elapsed_time << " ms" << std::endl;
-    std::cout << std::left << std::setw(20) << "STEP: " << steps << std::endl;
-    std::cout << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e3 * 1.0 / elapsed_time << std::endl;
-    std::cout << std::left << std::setw(20) << "calc per frame: " << calculations_per_frame << std::endl;
-    std::cout << std::left << std::setw(20) << "total calc: " << total_calculations << std::endl;
-    std::cout << std::left << std::setw(20) << "worst case: " << std::fixed << std::setprecision(2) << current_ratio_worst * 100.0 << "% " << ((current_ratio_worst > 1.0) ? "faster" : "slower") << std::endl;
-    std::cout << std::left << std::setw(20) << "best case: " << std::fixed << std::setprecision(2) << current_ratio_best * 100.0 << "% " << ((current_ratio_best > 1.0) ? "faster" : "slower") << std::endl;
-    std::cout << "########################################" << std::endl << std::endl;
+std::string SimulationManager::get_debug_info()
+{
+    std::stringstream ss;
+
+    double current_ratio_worst = bodies->get_size() * bodies->get_size() / this->calculations_per_frame;
+    double current_ratio_best = bodies->get_size() * log2(bodies->get_size()) / this->calculations_per_frame;
+
+    ss << "########################################" << std::endl << std::endl;
+    ss << std::left << std::setw(20) << "STEP: " << this->steps << std::endl;
+    ss << std::left << std::setw(20) << "particles: " << this->bodies->get_size() << std::endl << std::endl;
+
+    ss << std::left << std::setw(20) << "phys time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
+    ss << std::left << std::setw(20) << "graph time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
+    ss << std::left << std::setw(20) << "total time: " << this->total_frame_time / 1000 << " ms" << std::endl << std::endl;
+
+    ss << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl << std::endl;
+
+    ss << std::left << std::setw(20) << "calc per frame: " << this->calculations_per_frame << std::endl;
+    ss << std::left << std::setw(20) << "total calc: " << this->total_calculations << std::endl << std::endl;
+
+    //ss << std::left << std::setw(20) << "worst case: " << std::fixed << std::setprecision(2) << current_ratio_worst * 100.0 << "% " << ((current_ratio_worst > 1.0) ? "faster" : "slower") << std::endl;
+    //ss << std::left << std::setw(20) << "best case: " << std::fixed << std::setprecision(2) << current_ratio_best * 100.0 << "% " << ((current_ratio_best > 1.0) ? "faster" : "slower") << std::endl << std::endl;
+
+    return ss.str();
 }

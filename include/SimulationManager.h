@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <thread>
 #include <iostream>
+#include <sstream>
 
 class SimulationManager {
 private:
@@ -29,8 +30,14 @@ private:
 
     bool toggle_verbose;
 
+    // debug info stuff
+    long steps;
     long unsigned total_calculations;
     long unsigned calculations_per_frame;
+
+    double elapsed_time_physics;
+    double elapsed_time_graphics;
+    double total_frame_time;
 
 public:
     SimulationManager(const int width, const int height, const char* title = "N-Body Simulation", double G = 6.67408e-11, double theta = 0.8, double dt = 0.1);
@@ -39,8 +46,14 @@ public:
     void update_simulation(unsigned long& calculations_per_frame);
     void draw_simulation();
 
+    void draw_bodies();
+    void draw_vectors();
+    void draw_quadtree();
+
+    void print_start_info();
     void handle_window_events();
-    void print_debug_info(unsigned long steps, double elapsed_time, int calculations_per_frame, double worst_case, double best_case);
+    void print_debug_info();
+    std::string get_debug_info();
 
     void run();
     inline void pause() { toggle_paused = !toggle_paused; }
