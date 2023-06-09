@@ -39,8 +39,9 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
     for (unsigned i = 0; i < count; ++i)
     {
-        bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
-        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
+        //bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
+        bodies->mass[i] = 1.0;
+        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0) * 0.05;
 
         double x = rand() % (3 * window->get_width() / 5) + window->get_width() / 5;
         double y = rand() % (3 * window->get_height() / 5) + window->get_height() / 5;
@@ -50,6 +51,8 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
         double angle = atan2(y - window->get_height() / 2.0, x - window->get_width() / 2.0);
 
         bodies->vel[i] = Vec2(-sin(angle), cos(angle)) * 10;
+
+        //bodies->vel[i] = Vec2(0.0, 0.0);
 
         bodies->pressure[i] = std::numeric_limits<double>::max();
     }
@@ -100,6 +103,8 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 
     tree = nullptr;
     tree = std::make_shared<QuadTree>(bodies, 0.0, 0.0, static_cast<double>(window->get_width()), static_cast<double>(window->get_height()));
+
+    tree->insert(bodies);
     tree->update(theta, G, dt, calculations_per_frame);
 
     if (toggle_verbose) std::cout << "==> successfully updated simulation" << std::endl;
@@ -196,6 +201,7 @@ void SimulationManager::draw_simulation()
     // find the min and max distance, gets abused for pressure
     double min_distance = std::numeric_limits<double>::max();
     double max_distance = std::numeric_limits<double>::min();
+
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         double distance = bodies->pressure[i];
@@ -207,10 +213,11 @@ void SimulationManager::draw_simulation()
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         sf::CircleShape circle;
-        circle.setRadius(1);
-        circle.setPosition(bodies->pos[i].x - bodies->radius[i], bodies->pos[i].y - bodies->radius[i]);
+        double radius = 1.0;
+        circle.setRadius(radius);
+        circle.setPosition(sf::Vector2f(bodies->pos[i].x - radius, bodies->pos[i].y - radius));
 
-        /*
+
         // color depends on distance to nearest body -> "pressure"
         double normalized_pressure = pow((bodies->pressure[i] - min_distance) / (max_distance - min_distance), 0.5);
         sf::Color interpolatedColor;
@@ -234,7 +241,6 @@ void SimulationManager::draw_simulation()
         interpolatedColor.a = static_cast<sf::Uint8>(interpolatedColor.a * (0.6 + (0.4 * normalized_pressure)));
 
         circle.setFillColor(interpolatedColor);
-        */
 
         circle.setFillColor(sf::Color::White);
         window->draw(circle);

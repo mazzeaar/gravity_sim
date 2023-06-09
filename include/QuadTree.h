@@ -26,7 +26,7 @@ public:
 
         pos.resize(num_bodies);
         vel.resize(num_bodies);
-        acc.resize(num_bodies);
+        acc.resize(num_bodies, Vec2(0.0, 0.0));
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
         pressure.resize(num_bodies, std::numeric_limits<double>::max());
@@ -35,7 +35,7 @@ public:
     // Method to add a force to a specific body
     inline void add_force(unsigned index, const Vec2& force)
     {
-        acc[index] += (force / mass[index]);
+        acc[index] += force;
     }
 
     // Method to reset the force on a specific body
@@ -100,14 +100,15 @@ private:
     Vec2 center_of_mass;
     double mass;
     double pressure_threshold;
+    long total_bodies;
 
     int body_index = -1;
     std::shared_ptr<Bodies> bodies;
 
-    std::shared_ptr<QuadTree> NW;
-    std::shared_ptr<QuadTree> NE;
-    std::shared_ptr<QuadTree> SW;
-    std::shared_ptr<QuadTree> SE;
+    std::unique_ptr<QuadTree> NW;
+    std::unique_ptr<QuadTree> NE;
+    std::unique_ptr<QuadTree> SW;
+    std::unique_ptr<QuadTree> SE;
 
     // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
     void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
@@ -125,7 +126,7 @@ public:
     bool subdivide();
 
     // inserts one body into this quadtree
-    void insert(std::shared_ptr<Bodies>& bodies);
+    void insert(std::shared_ptr<Bodies> bodies);
     void insert(unsigned index);
 
     // updates all bodies in this quadtree
@@ -135,6 +136,7 @@ public:
     // => is used for drawing the quadtree structure and is extremely inefficient and expensive to run
     void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
 
+    inline long get_total_bodies() { return total_bodies; }
     // returns true if body is contained in this quadtree
     bool contains(unsigned index);
 
