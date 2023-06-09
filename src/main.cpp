@@ -6,9 +6,9 @@
 // = TODO: make this a config file!!! =
 // ====================================
 const double G = 6.67408e-3;
-const double theta = 2.8;
+const double theta = 1.8;
 const double dt = 0.1;
-const unsigned body_count = 30000;
+const unsigned body_count = 15000;
 
 const int max_mass = 100;
 

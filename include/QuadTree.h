@@ -54,7 +54,7 @@ public:
 
     inline void resize(unsigned num_bodies)
     {
-        if (num_bodies <= size) return;
+        if ( num_bodies <= size ) return;
 
         size = num_bodies;
 
@@ -72,9 +72,9 @@ public:
 
     inline void remove_merged_bodies()
     {
-        for (unsigned i = 0; i < size; ++i)
+        for ( unsigned i = 0; i < size; ++i )
         {
-            if (to_be_deleted[i])
+            if ( to_be_deleted[i] )
             {
                 pos.erase(pos.begin() + i);
                 vel.erase(vel.begin() + i);
@@ -95,7 +95,7 @@ public:
     {
         pos[keep_index] = (pos[keep_index] * mass[keep_index] + pos[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
         vel[keep_index] = (vel[keep_index] * mass[keep_index] + vel[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
-        acc[keep_index] = (acc[keep_index] * mass[keep_index] + acc[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
+        acc[keep_index] += acc[remove_index];
 
         mass[keep_index] += mass[remove_index];
         radius[keep_index] = std::pow(mass[keep_index], 1.0 / 3.0);
@@ -106,9 +106,9 @@ public:
 
     inline void update(double dt)
     {
-        for (unsigned i = 0; i < size; ++i)
+        for ( unsigned i = 0; i < size; ++i )
         {
-            if (mass[i] == 0.0) continue;
+            if ( mass[i] == 0.0 ) continue;
 
             // Update velocity half a step forward using the current acceleration and the time step
             vel[i] = vel[i] + acc[i] * (0.5 * dt);
@@ -128,7 +128,7 @@ public:
 
     inline void print() const
     {
-        for (unsigned i = 0; i < size; ++i)
+        for ( unsigned i = 0; i < size; ++i )
         {
             print(i);
         }

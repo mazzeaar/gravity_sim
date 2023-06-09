@@ -47,8 +47,11 @@ public:
     void draw_simulation();
 
     void draw_bodies();
+    void draw_bodies_with_density();
     void draw_vectors();
     void draw_quadtree();
+
+    void get_particle_area(Vec2& top_left, Vec2& bottom_right);
 
     void print_start_info();
     void handle_window_events();
