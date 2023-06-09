@@ -1,6 +1,5 @@
 #include "QuadTree.h"
 
-
 /*
 ------------------------------------------
 |        constructors/destructor         |
@@ -22,11 +21,9 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
     SE = nullptr;
 }
 
-
 QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax) :
     QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax))
 {}
-
 
 QuadTree::~QuadTree()
 {
@@ -65,10 +62,9 @@ bool QuadTree::contains(unsigned index)
         && bodies->pos[index].y <= bottom_right.y;
 }
 
-
 bool QuadTree::subdivide()
 {
-    const double threshold = 0.01;
+    const double threshold = 0.1;
 
     if (bottom_right.x - top_left.x < threshold || bottom_right.y - top_left.y < threshold)
     {
@@ -121,11 +117,9 @@ void QuadTree::insert(unsigned index)
         this->center_of_mass = bodies->pos[index];
         return;
     }
-    else
-    {
-        this->center_of_mass = (this->center_of_mass * this->mass + bodies->pos[index] * bodies->mass[index]) / (this->mass + bodies->mass[index]);
-        this->mass += bodies->mass[index];
-    }
+
+    this->center_of_mass = (this->center_of_mass * this->mass + bodies->pos[index] * bodies->mass[index]) / (this->mass + bodies->mass[index]);
+    this->mass += bodies->mass[index];
 
     if (this->is_leaf())
     {
@@ -133,31 +127,33 @@ void QuadTree::insert(unsigned index)
         {
             if (this->subdivide())
             {
+                // move body thats already contained to new quadrant
                 unsigned old_index = this->body_index;
                 this->body_index = -1;
 
                 this->insert(old_index);
                 this->insert(index);
-                return;
             }
             else
             {
+                // if we can't subdivide, we have to merge the bodies
+                bodies->merge_bodies(this->body_index, index);
+                bodies->pressure[body_index] += 1;
                 return;
             }
         }
-        else
-        {
-            this->body_index = index;
-            return;
-        }
+
+        // if no body is contained, we can just add the body
+        this->body_index = index;
+        return;
     }
 
+    // if its not a leaf, we insert the body into the children
     NW->insert(index);
     NE->insert(index);
     SW->insert(index);
     SE->insert(index);
 }
-
 
 /*
 ------------------------------------------
@@ -174,35 +170,24 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
 
     Vec2 direction = this->center_of_mass - bodies->pos[index];
     double squared_distance = direction.squared_length();
+    double squared_size = (bottom_right - top_left).squared_length();
 
-    if (is_leaf())
+    if (squared_size / squared_distance < theta || is_leaf())
     {
         ++calculations_per_frame;
         double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
-        bodies->add_force(index, direction.normalize() * force);
+        bodies->add_force(index, direction * force);
     }
     else
     {
-        double size = bottom_right.x - top_left.x;
-        double squared_size = size * size;
-
-        if (squared_size / squared_distance < theta * theta)
-        {
-            ++calculations_per_frame;
-            double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
-            bodies->add_force(index, direction.normalize() * force);
-        }
-        else
-        {
-            compute_force_on_children(index, theta, G, calculations_per_frame);
-        }
+        compute_force_on_children(index, theta, G, calculations_per_frame);
     }
 }
 
 double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance)
 {
-    double epsilon_squared = 2.0; // Modify this value as needed
-    return 100 * G * mass1 * mass2 / (squared_distance + epsilon_squared);
+    const double epsilon_squared = 0.4; // softening factor, else force goes BRRRRRT
+    return G * mass1 * mass2 / (squared_distance + epsilon_squared);
 }
 
 void QuadTree::compute_force_on_children(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
@@ -220,6 +205,7 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
         compute_force(i, theta, G, calculations_per_frame);
     }
 
+    bodies->remove_merged_bodies();
     bodies->update(dt);
 }
 

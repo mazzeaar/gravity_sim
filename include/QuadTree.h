@@ -17,6 +17,8 @@ public:
     std::vector<double> radius;
     std::vector<double> pressure;
 
+    std::vector<bool> to_be_deleted;
+
     unsigned size;
 
     // Constructor that resizes the vectors to hold a specific number of bodies
@@ -29,13 +31,15 @@ public:
         acc.resize(num_bodies, Vec2(0.0, 0.0));
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
-        pressure.resize(num_bodies, std::numeric_limits<double>::max());
+        pressure.resize(num_bodies, 0.0);
+
+        to_be_deleted.resize(num_bodies, false);
     }
 
     // Method to add a force to a specific body
     inline void add_force(unsigned index, const Vec2& force)
     {
-        acc[index] += force;
+        acc[index] += force / mass[index];
     }
 
     // Method to reset the force on a specific body
@@ -53,28 +57,46 @@ public:
         pos.resize(num_bodies);
         vel.resize(num_bodies);
         acc.resize(num_bodies, Vec2(0.0, 0.0));
+
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
-        pressure.resize(num_bodies, std::numeric_limits<double>::max());
+        pressure.resize(num_bodies, 0.0);
+
+        to_be_deleted.resize(num_bodies, false);
     }
 
     inline void remove_merged_bodies()
     {
-        for (int i = size - 1; i >= 0; --i)
+        for (unsigned i = 0; i < size; ++i)
         {
-            if (mass[i] == 0.0)
+            if (to_be_deleted[i])
             {
-                // Remove the body at index i
                 pos.erase(pos.begin() + i);
                 vel.erase(vel.begin() + i);
                 acc.erase(acc.begin() + i);
+
                 mass.erase(mass.begin() + i);
                 radius.erase(radius.begin() + i);
                 pressure.erase(pressure.begin() + i);
+
+                to_be_deleted.erase(to_be_deleted.begin() + i);
                 --size;
             }
         }
     }
+
+    inline void merge_bodies(unsigned keep_index, unsigned remove_index)
+    {
+        pos[keep_index] = (pos[keep_index] * mass[keep_index] + pos[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
+        vel[keep_index] = (vel[keep_index] * mass[keep_index] + vel[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
+        acc[keep_index] = (acc[keep_index] * mass[keep_index] + acc[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
+
+        mass[keep_index] += mass[remove_index];
+        radius[keep_index] = std::pow(mass[keep_index], 1.0 / 3.0);
+
+        to_be_deleted[remove_index] = true;
+    }
+
 
     inline void update(double dt)
     {
@@ -90,7 +112,7 @@ public:
     }
 
     double get_pressure(unsigned index) { return pressure[index]; }
-    void reset_pressure(unsigned index) { pressure[index] = std::numeric_limits<double>::max(); }
+    void reset_pressure(unsigned index) {}
     unsigned get_size() { return size; }
 
     void print() const
@@ -110,6 +132,7 @@ public:
         std::cout << "     mass: " << mass[index] << std::endl;
         std::cout << "     radius: " << radius[index] << std::endl;
         std::cout << "     pressure: " << pressure[index] << std::endl;
+        std::cout << "     to_be_deleted: " << to_be_deleted[index] << std::endl;
     }
 };
 

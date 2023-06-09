@@ -58,6 +58,9 @@ public:
     inline void set_draw_quadtree(bool toggle_draw_quadtree) { this->toggle_draw_quadtree = toggle_draw_quadtree; }
     inline void set_verbose(bool toggle_verbose) { this->toggle_verbose = toggle_verbose; }
 
+    inline void increase_dt(double dt) { this->dt += 0.05; }
+    inline void decrease_dt(double dt) { this->dt = std::max(0.05, this->dt - 0.05); }
+
     void add_bodies(unsigned count = 8000, int max_mass = 6);
 };
 

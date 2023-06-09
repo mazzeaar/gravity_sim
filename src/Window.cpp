@@ -67,7 +67,7 @@ bool Window::is_open()
     return window->isOpen();
 }
 
-void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors, bool& toggle_debug)
+void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool& toggle_draw_vectors, bool& toggle_debug, double& dt)
 {
     sf::Event event;
     sf::RenderWindow& currentWindow = *window;  // Store a reference to the window
@@ -80,25 +80,41 @@ void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree, bool&
         }
         else if (event.type == sf::Event::KeyPressed)
         {
-            if (event.key.code == sf::Keyboard::Space)
+            if (event.key.code == sf::Keyboard::Escape)
+            {
+                currentWindow.close();
+                std::cout << "closing window" << std::endl;
+            }
+            else if (event.key.code == sf::Keyboard::Space)
             {
                 toggle_pause = !toggle_pause;
+                std::cout << "toggle_pause = " << toggle_pause << std::endl;
             }
             else if (event.key.code == sf::Keyboard::Q)
             {
                 toggle_draw_quadtree = !toggle_draw_quadtree;
+                std::cout << "toggle_draw_quadtree = " << toggle_draw_quadtree << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Escape)
-            {
-                currentWindow.close();
-            }
+
             else if (event.key.code == sf::Keyboard::V)
             {
                 toggle_draw_vectors = !toggle_draw_vectors;
+                std::cout << "toggle_draw_vectors = " << toggle_draw_vectors << std::endl;
             }
             else if (event.key.code == sf::Keyboard::D)
             {
                 toggle_debug = !toggle_debug;
+                std::cout << "toggle_debug = " << toggle_debug << std::endl;
+            }
+            else if (event.key.code == sf::Keyboard::Right)
+            {
+                dt += 0.05;
+                std::cout << "increased dt to " << dt << std::endl;
+            }
+            else if (event.key.code == sf::Keyboard::Left)
+            {
+                dt = std::max(0.05, dt - 0.05);
+                std::cout << "decreased dt to " << dt << std::endl;
             }
         }
     }

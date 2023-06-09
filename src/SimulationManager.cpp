@@ -40,7 +40,7 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
     for (unsigned i = 0; i < count; ++i)
     {
         bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
-        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0) * 0.05;
+        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
 
         double x = rand() % (3 * window->get_width() / 5) + window->get_width() / 5;
         double y = rand() % (3 * window->get_height() / 5) + window->get_height() / 5;
@@ -49,11 +49,9 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
         double angle = atan2(y - window->get_height() / 2.0, x - window->get_width() / 2.0);
 
-        bodies->vel[i] = Vec2(-sin(angle), cos(angle));
+        bodies->vel[i] = Vec2(-sin(angle), cos(angle)) * 10;
 
-        bodies->vel[i] = Vec2(0.0, 0.0);
-
-        bodies->pressure[i] = std::numeric_limits<double>::max();
+        //bodies->vel[i] = Vec2(0.0, 0.0);
     }
 
     if (toggle_verbose)
@@ -110,54 +108,49 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 
 sf::Color HSLtoRGB(float hue, float saturation, float lightness)
 {
+    // no pressure = green // more pressure = red
     float chroma = (1 - std::abs(2 * lightness - 1)) * saturation;
-    float huePrime = hue / 60.0f;
-    float x = chroma * (1 - std::abs(std::fmod(huePrime, 2) - 1));
+    float hue_prime = hue / 60.0;
 
-    float r, g, b;
-    if (huePrime < 1.0f)
+    float x = chroma * (1 - std::abs(fmod(hue_prime, 2) - 1));
+
+    float red = 0.0;
+    float green = 0.0;
+
+    if (hue_prime >= 0 && hue_prime < 1)
     {
-        r = chroma;
-        g = x;
-        b = 0;
+        red = chroma;
+        green = x;
     }
-    else if (huePrime < 2.0f)
+    else if (hue_prime >= 1 && hue_prime < 2)
     {
-        r = x;
-        g = chroma;
-        b = 0;
+        red = x;
+        green = chroma;
     }
-    else if (huePrime < 3.0f)
+    else if (hue_prime >= 2 && hue_prime < 3)
     {
-        r = 0;
-        g = chroma;
-        b = x;
+        green = chroma;
+        red = -x;
     }
-    else if (huePrime < 4.0f)
+    else if (hue_prime >= 3 && hue_prime < 4)
     {
-        r = 0;
-        g = x;
-        b = chroma;
+        green = x;
+        red = -chroma;
     }
-    else if (huePrime < 5.0f)
+    else if (hue_prime >= 4 && hue_prime < 5)
     {
-        r = x;
-        g = 0;
-        b = chroma;
+        red = -chroma;
+        green = -x;
     }
-    else
+    else if (hue_prime >= 5 && hue_prime < 6)
     {
-        r = chroma;
-        g = 0;
-        b = x;
+        red = -x;
+        green = -chroma;
     }
 
-    float m = lightness - chroma * 0.5f;
-    float rgbOffset = m + chroma;
+    float m = lightness - chroma / 2.0;
 
-    return sf::Color(static_cast<sf::Uint8>((r + m) * 255),
-        static_cast<sf::Uint8>((g + m) * 255),
-        static_cast<sf::Uint8>((b + m) * 255));
+    return sf::Color((red + m) * 255, (green + m) * 255, (m) * 255);
 }
 
 void SimulationManager::draw_simulation()
@@ -182,7 +175,7 @@ void SimulationManager::draw_simulation()
         for (unsigned i = 0; i < bodies->get_size(); ++i)
         {
             double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
-            double length = bodies->vel[i].length();
+            double length = bodies->vel[i].length() + 15;
 
             sf::Vertex line[] = {
                 sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
@@ -198,45 +191,26 @@ void SimulationManager::draw_simulation()
 
     // find the min and max distance, gets abused for pressure
     double min_distance = std::numeric_limits<double>::max();
-    double max_distance = std::numeric_limits<double>::min();
+    double max_distance = 0.0;
 
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         double distance = bodies->pressure[i];
         min_distance = std::min(min_distance, distance);
-        if (distance != std::numeric_limits<double>::max()) max_distance = std::max(max_distance, distance);
+        max_distance = std::max(max_distance, distance);
     }
 
     // draw bodies
     for (unsigned i = 0; i < bodies->get_size(); ++i)
     {
         sf::CircleShape circle;
-        double radius = 1.0;
+        double radius = bodies->radius[i];
         circle.setRadius(radius);
         circle.setPosition(sf::Vector2f(bodies->pos[i].x - radius, bodies->pos[i].y - radius));
 
-
-        // color depends on distance to nearest body -> "pressure"
-        double normalized_pressure = pow((bodies->pressure[i] - min_distance) / (max_distance - min_distance), 0.5);
-        sf::Color interpolatedColor;
-
-        if (normalized_pressure <= 0.05)
-        {
-            interpolatedColor = sf::Color(255, 255, 255);
-        }
-        else if (normalized_pressure <= 0.5)
-        {
-            float hue = 240.0f * (0.5f - normalized_pressure) / 0.5f;  // Interpolate hue from 240 (blue) to 0 (red)
-            interpolatedColor = HSLtoRGB(hue, 100, 50);
-        }
-        else
-        {
-            float hue = 0.0f;  // Red
-            float saturation = 100.0f * (normalized_pressure - 0.5f) / 0.5f;  // Interpolate saturation from 0 to 100
-            interpolatedColor = HSLtoRGB(hue, saturation, 100);
-        }
-
-        interpolatedColor.a = static_cast<sf::Uint8>(interpolatedColor.a * (0.6 + (0.4 * normalized_pressure)));
+        // interpolate between red and blue
+        double hue = 240.0 * (bodies->pressure[i] - min_distance) / (max_distance - min_distance);
+        sf::Color interpolatedColor = HSLtoRGB(hue, 1.0, 0.5);
 
         circle.setFillColor(interpolatedColor);
 
@@ -251,7 +225,7 @@ void SimulationManager::draw_simulation()
 void SimulationManager::handle_window_events()
 {
     if (toggle_verbose) std::cout << "=> SimulationManager::handle_window_events()" << std::endl;
-    window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug);
+    window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug, dt);
     if (toggle_verbose) std::cout << "==> successfully handled window events" << std::endl;
 }
 
