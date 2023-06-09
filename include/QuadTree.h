@@ -52,18 +52,38 @@ public:
 
         pos.resize(num_bodies);
         vel.resize(num_bodies);
-        acc.resize(num_bodies);
+        acc.resize(num_bodies, Vec2(0.0, 0.0));
         mass.resize(num_bodies, 0.0);
         radius.resize(num_bodies, 0.0);
         pressure.resize(num_bodies, std::numeric_limits<double>::max());
+    }
+
+    inline void remove_merged_bodies()
+    {
+        for (int i = size - 1; i >= 0; --i)
+        {
+            if (mass[i] == 0.0)
+            {
+                // Remove the body at index i
+                pos.erase(pos.begin() + i);
+                vel.erase(vel.begin() + i);
+                acc.erase(acc.begin() + i);
+                mass.erase(mass.begin() + i);
+                radius.erase(radius.begin() + i);
+                pressure.erase(pressure.begin() + i);
+                --size;
+            }
+        }
     }
 
     inline void update(double dt)
     {
         for (unsigned i = 0; i < size; ++i)
         {
-            vel[i] += acc[i] * dt;
-            pos[i] += vel[i] * dt;
+            if (mass[i] == 0.0) continue;
+
+            vel[i] = vel[i] + acc[i] * dt;
+            pos[i] = pos[i] + vel[i] * dt;
 
             reset_force(i);
         }
@@ -113,6 +133,12 @@ private:
     // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
     void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
 
+    // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
+    double calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance);
+
+    // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
+    void compute_force_on_children(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
+
 public:
     QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right);
     QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax);
@@ -121,22 +147,18 @@ public:
 
     // deletes all children and bodies
     void clear();
-
     // splits this quadtree into 4 children
     bool subdivide();
-
-    // inserts one body into this quadtree
+    // inserts bodies into this quadtree
     void insert(std::shared_ptr<Bodies> bodies);
     void insert(unsigned index);
 
     // updates all bodies in this quadtree
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
-
     // returns the bounding boxes of all bodies in this quadtree
     // => is used for drawing the quadtree structure and is extremely inefficient and expensive to run
     void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
 
-    inline long get_total_bodies() { return total_bodies; }
     // returns true if body is contained in this quadtree
     bool contains(unsigned index);
 
@@ -148,6 +170,8 @@ public:
             && SW == nullptr
             && SE == nullptr;
     }
+
+    inline long get_total_bodies() { return total_bodies; }
 };
 
 #endif // QUADTREE_H

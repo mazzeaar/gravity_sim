@@ -172,28 +172,46 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
         return;
     }
 
-    double epsilon = 0.1;
-
     Vec2 direction = this->center_of_mass - bodies->pos[index];
-    double distance = direction.length();
+    double squared_distance = direction.squared_length();
 
-    double size = bottom_right.x - top_left.x;
-
-    if (size / distance < theta || is_leaf()) // Check if we are close enough or if it's a leaf quadrant
+    if (is_leaf())
     {
         ++calculations_per_frame;
-        double force = G * this->mass * bodies->mass[index] / (distance * distance + epsilon * epsilon);
+        double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
         bodies->add_force(index, direction.normalize() * force);
-
-        return;
     }
+    else
+    {
+        double size = bottom_right.x - top_left.x;
+        double squared_size = size * size;
 
+        if (squared_size / squared_distance < theta * theta)
+        {
+            ++calculations_per_frame;
+            double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
+            bodies->add_force(index, direction.normalize() * force);
+        }
+        else
+        {
+            compute_force_on_children(index, theta, G, calculations_per_frame);
+        }
+    }
+}
+
+double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance)
+{
+    double epsilon_squared = 2.0; // Modify this value as needed
+    return 100 * G * mass1 * mass2 / (squared_distance + epsilon_squared);
+}
+
+void QuadTree::compute_force_on_children(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
+{
     NW->compute_force(index, theta, G, calculations_per_frame);
     NE->compute_force(index, theta, G, calculations_per_frame);
     SW->compute_force(index, theta, G, calculations_per_frame);
     SE->compute_force(index, theta, G, calculations_per_frame);
 }
-
 
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {

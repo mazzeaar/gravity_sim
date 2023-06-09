@@ -101,7 +101,7 @@ public:
         return std::hypot(x, y);
     }
 
-    inline double length_squared() const
+    inline double squared_length() const
     {
         return x * x + y * y;
     }

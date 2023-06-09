@@ -39,8 +39,7 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
     for (unsigned i = 0; i < count; ++i)
     {
-        //bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
-        bodies->mass[i] = 1.0;
+        bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
         bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0) * 0.05;
 
         double x = rand() % (3 * window->get_width() / 5) + window->get_width() / 5;
@@ -50,9 +49,9 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
         double angle = atan2(y - window->get_height() / 2.0, x - window->get_width() / 2.0);
 
-        bodies->vel[i] = Vec2(-sin(angle), cos(angle)) * 10;
+        bodies->vel[i] = Vec2(-sin(angle), cos(angle));
 
-        //bodies->vel[i] = Vec2(0.0, 0.0);
+        bodies->vel[i] = Vec2(0.0, 0.0);
 
         bodies->pressure[i] = std::numeric_limits<double>::max();
     }
@@ -62,7 +61,6 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
         std::cout << "==> successfully added " << count << " bodies" << std::endl;
         // bodies->print();
     }
-
 }
 
 void SimulationManager::run()
@@ -242,7 +240,6 @@ void SimulationManager::draw_simulation()
 
         circle.setFillColor(interpolatedColor);
 
-        circle.setFillColor(sf::Color::White);
         window->draw(circle);
 
         bodies->reset_pressure(i);
