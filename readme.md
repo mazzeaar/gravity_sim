@@ -5,6 +5,7 @@ Its worth noting that the implementation is terrible (as of now) and there are l
 
 - [ ] use [MVC](https://en.wikipedia.org/wiki/Model–view–controller) design pattern
 - [ ] fix the quadtree instead of reconstructing it
+  - tried it, i think its slower but i have to look at it again some other time
 - [ ] implement [spacial hashing](https://en.wikipedia.org/wiki/Geometric_hashing) and some [integrator](https://en.wikipedia.org/wiki/Numerical_integration) for the physics
 - [x] change datastructure from an array of objects (AoO) to an [object of arrays](https://stackoverflow.com/questions/37988451/convert-array-of-objects-to-an-object-of-arrays) (OoA), this should improve memory access
 - [ ] some graphics API, not SFML lol
