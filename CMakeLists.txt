@@ -13,6 +13,8 @@ find_package(SFML COMPONENTS graphics window system)
 target_link_libraries(gravity_sim sfml-graphics sfml-window sfml-system)
 
 target_compile_features(gravity_sim PUBLIC cxx_std_20 )
+# compile with maximal compiler optimizations
+target_compile_options(gravity_sim PUBLIC -O3)
 
 add_custom_target(run
     COMMAND gravity_sim

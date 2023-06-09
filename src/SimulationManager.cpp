@@ -1,4 +1,5 @@
 #include "SimulationManager.h"
+#include <thread>
 
 SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
     : G(G), theta(theta), dt(dt), toggle_paused(true), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
@@ -251,7 +252,7 @@ void SimulationManager::run()
     double worst_case = bodies->get_size() * bodies->get_size();
     double best_case = bodies->get_size() * log2(bodies->get_size());
 
-    std::chrono::steady_clock::time_point begin, end;
+    std::chrono::steady_clock::time_point begin, end, begin2, end2;
 
     while ( window->is_open() )
     {
@@ -262,10 +263,11 @@ void SimulationManager::run()
         if ( !toggle_paused )
         {
             begin = std::chrono::steady_clock::now();
-            update_simulation(calculations_per_frame);
-            end = std::chrono::steady_clock::now();
+            std::thread t(&SimulationManager::update_simulation, this, std::ref(calculations_per_frame));
 
-            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+            // interpolating a bit :)
+            bodies->update(dt / 2.0);
+            draw_simulation(true); // drawing without the new quadtree, else memory go boom
 
             total_calculations += calculations_per_frame;
 
@@ -274,6 +276,12 @@ void SimulationManager::run()
                 print_debug_info();
             }
             calculations_per_frame = 0;
+
+            t.join();
+            end = std::chrono::steady_clock::now();
+            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+
+            bodies->update(dt / 2.0);
         }
 
         begin = std::chrono::steady_clock::now();
@@ -333,16 +341,23 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
     }
 }
 
-void SimulationManager::draw_simulation()
+void SimulationManager::draw_simulation(bool half_step)
 {
     window->clear();
 
-    draw_quadtree();
+    if ( !half_step )
+    {
+        draw_quadtree();
+    }
+    else
+    {
+        draw_old_quadtree();
+    }
+
     draw_vectors();
 
     //draw_bodies_with_density();
     draw_bodies();
-
     window->display();
 }
 // ------------------------------------------------------------------------
@@ -368,6 +383,16 @@ void SimulationManager::draw_vectors()
         line[1].color.a *= 0.3;
 
         window->draw(line, 2, sf::Lines);
+    }
+}
+
+void SimulationManager::draw_old_quadtree()
+{
+    if ( !toggle_draw_quadtree ) return;
+
+    for ( sf::RectangleShape* rectangle : bounding_boxes )
+    {
+        window->draw(*rectangle);
     }
 }
 
@@ -526,7 +551,8 @@ std::string SimulationManager::get_debug_info()
     ss << std::left << std::setw(20) << "graph time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
     ss << std::left << std::setw(20) << "total time: " << this->total_frame_time / 1000 << " ms" << std::endl << std::endl;
 
-    ss << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl << std::endl;
+    ss << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time;
+    ss << " (" << std::fixed << std::setprecision(3) << 1e6 * 2.0 / this->total_frame_time << ")" << std::endl << std::endl;
 
     ss << std::left << std::setw(20) << "calc per frame: " << this->calculations_per_frame << std::endl;
     ss << std::left << std::setw(20) << "total calc: " << this->total_calculations << std::endl << std::endl;

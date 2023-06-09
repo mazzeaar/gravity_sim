@@ -6,6 +6,7 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #include <vector>
+#include <stack>
 
 struct Bodies {
 public:
@@ -162,7 +163,6 @@ private:
     long total_bodies;
 
     int body_index = -1;
-    std::shared_ptr<Bodies> bodies;
 
     std::unique_ptr<QuadTree> NW;
     std::unique_ptr<QuadTree> NE;
@@ -170,7 +170,6 @@ private:
     std::unique_ptr<QuadTree> SE;
 
     // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
-    void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
 
     // computes the force exerted on body by this quadtree using the Barnes-Hut approximation
     double calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance);
@@ -185,6 +184,8 @@ public:
 
     ~QuadTree();
     void clear();
+    void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
+    std::shared_ptr<Bodies> bodies;
 
     // splits this quadtree into 4 children
     bool subdivide();

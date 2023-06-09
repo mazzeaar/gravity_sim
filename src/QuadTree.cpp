@@ -119,10 +119,11 @@ void QuadTree::insert(unsigned index)
 
     if ( !this->is_leaf() )
     {
-        this->NW->insert(index);
-        this->NE->insert(index);
-        this->SW->insert(index);
-        this->SE->insert(index);
+        if ( this->NW->contains(index) ) this->NW->insert(index);
+        if ( this->NE->contains(index) ) this->NE->insert(index);
+        if ( this->SW->contains(index) ) this->SW->insert(index);
+        if ( this->SE->contains(index) ) this->SE->insert(index);
+
         return;
     }
     else if ( this->body_index == -1 )
@@ -146,7 +147,7 @@ void QuadTree::insert(unsigned index)
         else
         {
             // bodies->merge_bodies(this->body_index, index); // removes a lot of bodies
-            this->body_index = index;
+            // this->body_index = index;
             return;
         }
     }
@@ -158,26 +159,40 @@ void QuadTree::insert(unsigned index)
 
 void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
 {
-    if ( this->mass == 0 || this->body_index == index )
-    {
-        return;
-    }
+    std::stack<QuadTree*> stack;
+    stack.push(this);
 
-    Vec2 direction = this->center_of_mass - bodies->pos[index];
-    double squared_distance = direction.squared_length();
-    double squared_size = (bottom_right - top_left).squared_length();
+    while ( !stack.empty() )
+    {
+        QuadTree* node = stack.top();
+        stack.pop();
 
-    if ( squared_size / squared_distance < theta || is_leaf() )
-    {
-        ++calculations_per_frame;
-        double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
-        bodies->add_force(index, direction * force);
-    }
-    else
-    {
-        compute_force_on_children(index, theta, G, calculations_per_frame);
+        if ( node->mass == 0 || node->body_index == index )
+        {
+            continue;
+        }
+
+        Vec2 direction = node->center_of_mass - bodies->pos[index];
+        double squared_distance = direction.squared_length();
+        double squared_size = (node->bottom_right - node->top_left).squared_length();
+
+        if ( squared_size / squared_distance < theta || node->is_leaf() )
+        {
+            ++calculations_per_frame;
+            double force = calculate_gravitational_force(G, node->mass, bodies->mass[index], squared_distance);
+            bodies->add_force(index, direction * force);
+        }
+        else
+        {
+            // Push children onto the stack in reverse order (clockwise from top-right)
+            if ( node->NE != nullptr ) stack.push(node->NE.get());
+            if ( node->NW != nullptr ) stack.push(node->NW.get());
+            if ( node->SE != nullptr ) stack.push(node->SE.get());
+            if ( node->SW != nullptr ) stack.push(node->SW.get());
+        }
     }
 }
+
 
 double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance)
 {
@@ -201,9 +216,7 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
     }
 
     bodies->remove_merged_bodies();
-    bodies->update(dt);
 }
-
 
 /*----------------------------------------
 |                 print                  |

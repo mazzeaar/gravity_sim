@@ -44,12 +44,13 @@ public:
     ~SimulationManager();
 
     void update_simulation(unsigned long& calculations_per_frame);
-    void draw_simulation();
+    void draw_simulation(bool half_step = false);
 
     void draw_bodies();
     void draw_bodies_with_density();
     void draw_vectors();
     void draw_quadtree();
+    void draw_old_quadtree();
 
     void get_particle_area(Vec2& top_left, Vec2& bottom_right);
 
