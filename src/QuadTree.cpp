@@ -78,7 +78,6 @@ void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectang
     }
 }
 
-
 /*----------------------------------------
 |             private methods            |
 -----------------------------------------*/
