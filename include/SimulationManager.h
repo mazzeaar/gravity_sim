@@ -13,12 +13,22 @@
 #include <iostream>
 #include <sstream>
 
+enum BodyType {
+    SPINNING_CIRCLE,
+    GALAXY,
+    ROTATING_CUBES,
+    RANDOM,
+    LISA
+};
+
 class SimulationManager {
 private:
 
     std::shared_ptr<Bodies> bodies;
     Window* window;
+
     std::shared_ptr<QuadTree> tree;
+
     std::vector<sf::RectangleShape*> bounding_boxes;
 
     double G, theta, dt;
@@ -64,10 +74,7 @@ public:
     inline void resume() { toggle_paused = !toggle_paused; }
     inline void stop() { this->window->close(); }
 
-    inline void set_G(double G)
-    {
-        this->G = G;
-    }
+    inline void set_G(double G) { this->G = G; }
     inline void set_theta(double theta) { this->theta = theta; }
     inline void set_dt(double dt) { this->dt = dt; }
     inline void set_debug(bool toggle_debug) { this->toggle_debug = toggle_debug; }
@@ -81,7 +88,12 @@ public:
     inline void increase_G(double G) { this->G += 0.1; }
     inline void decrease_G(double G) { this->G = std::max(0.0, this->G - 0.1); }
 
-    void add_bodies(unsigned count = 8000, int max_mass = 6);
+    void add_bodies(unsigned count = 8000, double mass = 1.0, BodyType type = BodyType::RANDOM);
+    void add_lisa(unsigned count, double mass);
+    void add_galaxy(unsigned count, double mass);
+    void add_rotating_cubes(unsigned count, double mass);
+    void add_spinning_circle(unsigned count, double mass);
+    void add_random_bodies(unsigned count, double mass);
 };
 
 #endif // SIMULATION_MANAGER_H

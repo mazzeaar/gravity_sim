@@ -1,5 +1,4 @@
 #include "SimulationManager.h"
-#include <thread>
 
 SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
     : G(G), theta(theta), dt(dt), toggle_paused(true), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
@@ -18,37 +17,54 @@ SimulationManager::SimulationManager(const int width, const int height, const ch
 
 SimulationManager::~SimulationManager()
 {
-    if ( toggle_verbose ) std::cout << "=> SimulationManager::~SimulationManager()" << std::endl;
-
     bodies = nullptr;
     tree = nullptr;
     delete window;
-
-    if ( toggle_verbose ) std::cout << "==> successfully deleted window and tree" << std::endl;
 }
 
-// TODO - generate particles with enums. e.g. spiral, square, etc.
-// TODO - make the particles more realistic
-void SimulationManager::add_bodies(unsigned count, int max_mass)
-{
-    if ( toggle_verbose )
-    {
-        std::cout << "=> SimulationManager::add_bodies(" << count << ", " << max_mass << ")" << std::endl;
-    }
 
+
+
+void SimulationManager::add_bodies(unsigned count, double mass, enum BodyType body_type)
+{
     if ( count > bodies->get_size() )
     {
         bodies->resize(count);
     }
 
-    /* square
+    switch ( body_type )
+    {
+    case BodyType::SPINNING_CIRCLE:
+        add_spinning_circle(count, mass);
+        break;
+    case BodyType::GALAXY:
+        add_galaxy(count, mass);
+        break;
+    case BodyType::ROTATING_CUBES:
+        add_rotating_cubes(count, mass);
+        break;
+    case BodyType::RANDOM:
+        add_random_bodies(count, mass);
+        break;
+    case BodyType::LISA:
+        add_lisa(count, mass);
+        break;
+    default:
+        std::cout << "Error: Invalid body type." << std::endl;
+        break;
+    }
+}
+
+void SimulationManager::add_spinning_circle(unsigned count, double mass)
+{
     for ( unsigned i = 0; i < count; ++i )
     {
-        bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
+        bodies->mass[i] = mass;
         bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
 
-        double x = rand() % (3 * window->get_width() / 5) + window->get_width() / 5;
-        double y = rand() % (3 * window->get_height() / 5) + window->get_height() / 5;
+        // circle that fits in the screen using the golden ratio
+        double x = window->get_width() / 2.0 + window->get_height() / 2.0 * 0.418 * cos(2.0 * M_PI * i / count);
+        double y = window->get_height() / 2.0 + window->get_height() / 2.0 * 0.418 * sin(2.0 * M_PI * i / count);
 
         bodies->pos[i] = Vec2(x, y);
 
@@ -57,48 +73,51 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
         Vec2 direction = (bodies->pos[i] - center).normalize();
         Vec2 perpendicular = Vec2(-direction.y, direction.x);
 
-        bodies->vel[i] = perpendicular * bodies->pos[i].dist(center) * 0.03;
+        bodies->vel[i] = perpendicular * bodies->pos[i].dist(center) * 0.06;
     }
-    */
+}
 
-    /* spiral
-     double center_x = window->get_width() / 2.0;
-     double center_y = window->get_height() / 2.0;
-     double max_distance = std::min(center_x, center_y) * 0.9; // Limit the maximum distance from the center
+void SimulationManager::add_galaxy(unsigned count, double mass)
+{
+    double armCount = 3.0;       // Number of spiral arms
+    double armTightness = 0.5;   // Tightness of the spiral arms
+    double armVelocity = 0.03;   // Orbital velocity of the arms
 
-     double armCount = 5.0;       // Number of spiral arms
-     double armTightness = 0.5;   // Tightness of the spiral arms
-     double armVelocity = 0.03;   // Orbital velocity of the arms
+    double center_x = window->get_width() / 2.0;
+    double center_y = window->get_height() / 2.0;
+    double max_distance = std::min(center_x, center_y) * 0.9; // Limit the maximum distance from the center
 
-     for ( unsigned i = 0; i < count; ++i )
-     {
-         bodies->mass[i] = static_cast<double>(rand() % max_mass + 1);
-         bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
+    for ( unsigned i = 0; i < count; ++i )
+    {
+        bodies->mass[i] = mass;
+        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
 
-         double angle = static_cast<double>(rand()) / RAND_MAX * 2.0 * M_PI; // Random angle in radians
-         double distance = static_cast<double>(rand()) / RAND_MAX * max_distance; // Random distance from the center
+        double angle = static_cast<double>(rand()) / RAND_MAX * 2.0 * M_PI; // Random angle in radians
+        double distance = static_cast<double>(rand()) / RAND_MAX * max_distance; // Random distance from the center
 
-         double totalArmAngle = 0.0;
+        double totalArmAngle = 5.0;
 
-         for ( int j = 0; j < armCount; ++j )
-         {
-             // Add spiral arm effect to the angle
-             double armAngle = armTightness * angle + (j + 1) * distance / max_distance * 2.0 * M_PI;
-             double x = center_x + distance * cos(armAngle + totalArmAngle);
-             double y = center_y + distance * sin(armAngle + totalArmAngle);
+        for ( int j = 0; j < armCount; ++j )
+        {
+            // Add spiral arm effect to the angle
+            double armAngle = armTightness * angle + (j + 1) * distance / max_distance * 2.0 * M_PI;
+            double x = center_x + distance * cos(armAngle + totalArmAngle);
+            double y = center_y + distance * sin(armAngle + totalArmAngle);
 
-             bodies->pos[i] = Vec2(x, y);
+            bodies->pos[i] = Vec2(x, y);
 
-             Vec2 direction = (bodies->pos[i] - Vec2(center_x, center_y)).normalize();
-             Vec2 perpendicular = Vec2(-direction.y, direction.x);
+            Vec2 direction = (bodies->pos[i] - Vec2(center_x, center_y)).normalize();
+            Vec2 perpendicular = Vec2(-direction.y, direction.x);
 
-             bodies->vel[i] = perpendicular * distance * armVelocity;
+            bodies->vel[i] = perpendicular * distance * armVelocity;
 
-             totalArmAngle += armAngle;
-         }
-     }
-     */
+            totalArmAngle += armAngle;
+        }
+    }
+}
 
+void SimulationManager::add_rotating_cubes(unsigned count, double mass)
+{
     double center_x = window->get_width() / 2.0;
     double center_y = window->get_height() / 2.0;
 
@@ -110,9 +129,8 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
     double cubeSize = 800.0; // Size of the cubes
     double speed = 0.04;     // Orbital speed of the cubes
-    double mass = 10.0;
 
-    for ( unsigned i = 0; i < bodies->get_size() / 3; ++i )
+    for ( unsigned i = 0; i < bodies->get_size() / 2; ++i )
     {
         bodies->mass[i] = mass;
         bodies->radius[i] = 1.0;
@@ -127,7 +145,7 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
         bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(center_top_left_x, center_top_left_y)) * speed;
     }
 
-    for ( unsigned i = bodies->get_size() / 3; i < 2 * bodies->get_size() / 3; ++i )
+    for ( unsigned i = bodies->get_size() / 2; i < bodies->get_size(); ++i )
     {
         bodies->mass[i] = mass;
         bodies->radius[i] = cubeSize;
@@ -141,31 +159,27 @@ void SimulationManager::add_bodies(unsigned count, int max_mass)
 
         bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(center_bottom_right_x, center_bottom_right_y)) * speed;
     }
+}
 
-    // add the rest randomly
-    for ( unsigned i = 2 * bodies->get_size() / 3; i < bodies->get_size(); ++i )
+void SimulationManager::add_random_bodies(unsigned count, double mass)
+{
+    for ( unsigned i = 0; i < count; ++i )
     {
         bodies->mass[i] = mass;
-        bodies->radius[i] = 1.0;
+        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
 
-        // position fills 4/5 of the screen
-        double x = rand() % (4 * window->get_width() / 5) + window->get_width() / 10;
-        double y = rand() % (4 * window->get_height() / 5) + window->get_height() / 10;
+        double x = rand() % window->get_width();
+        double y = rand() % window->get_height();
 
         bodies->pos[i] = Vec2(x, y);
-    }
 
-    if ( toggle_verbose )
-    {
-        std::cout << "==> successfully added " << count << " bodies" << std::endl;
-        // bodies->print();
+        bodies->vel[i] = Vec2(0.0, 0.0);
     }
 }
 
 void SimulationManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
 {
-    if ( toggle_verbose ) std::cout << "=> SimulationManager::get_particle_area()" << std::endl;
-    // the area must be a square
+    // initialize the rectangle to the opposite corners of the screen
     top_left = Vec2(window->get_width(), window->get_height());
     bottom_right = Vec2(0, 0);
 
@@ -199,16 +213,12 @@ void SimulationManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
 
     if ( width > height )
     {
-        top_left.y -= (width - height) / 2.0;
-        bottom_right.y += (width - height) / 2.0;
+        bottom_right.y = top_left.y + width;
     }
     else
     {
-        top_left.x -= (height - width) / 2.0;
-        bottom_right.x += (height - width) / 2.0;
+        bottom_right.x = top_left.x + height;
     }
-
-    if ( toggle_verbose ) std::cout << "==> successfully got particle area" << std::endl;
 }
 
 // ------------------------------------------------------------------------
@@ -238,55 +248,51 @@ void SimulationManager::print_start_info()
 
 void SimulationManager::run()
 {
-    if ( toggle_verbose ) std::cout << "=> SimulationManager::run()" << std::endl;
+    print_start_info();
 
     Vec2 top_left, bottom_right;
     get_particle_area(top_left, bottom_right);
 
     tree = nullptr;
-    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right);
+    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, true);
 
-    print_start_info();
     update_simulation(calculations_per_frame);
 
     double worst_case = bodies->get_size() * bodies->get_size();
     double best_case = bodies->get_size() * log2(bodies->get_size());
 
-    std::chrono::steady_clock::time_point begin, end, begin2, end2;
+    std::chrono::steady_clock::time_point begin;
 
     while ( window->is_open() )
     {
-
         ++steps;
+
+        std::string filename = std::to_string(steps) + ".png";
+
+        while ( filename.size() < 7 )
+        {
+            filename = "0" + filename;
+        }
+        //window->store_png("./images/dump/" + filename);
+
         handle_window_events();
 
         if ( !toggle_paused )
         {
+            // update the forces and positions of the bodies
             begin = std::chrono::steady_clock::now();
-            std::thread t(&SimulationManager::update_simulation, this, std::ref(calculations_per_frame));
-
-            // interpolating a bit :)
-            bodies->update(dt / 2.0);
-            draw_simulation(true); // drawing without the new quadtree, else memory go boom
+            update_simulation(calculations_per_frame);
+            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin).count();
 
             total_calculations += calculations_per_frame;
 
-            if ( toggle_debug )
-            {
-                print_debug_info();
-            }
+            if ( toggle_debug ) print_debug_info();
             calculations_per_frame = 0;
-
-            t.join();
-            end = std::chrono::steady_clock::now();
-            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-
-            bodies->update(dt / 2.0);
         }
 
+        // draw the bodies
         begin = std::chrono::steady_clock::now();
         draw_simulation();
-        end = std::chrono::steady_clock::now();
 
         elapsed_time_graphics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin).count();
         total_frame_time = elapsed_time_physics + elapsed_time_graphics;
@@ -296,49 +302,12 @@ void SimulationManager::run()
 // TODO - remove the print statements
 void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
-    if ( toggle_verbose ) std::cout << std::endl << "=> SimulationManager::update_simulation()" << std::endl;
-
-    Vec2 top_left, bottom_right;
-    std::chrono::steady_clock::time_point begin, end;
-
-    begin = std::chrono::steady_clock::now();
-
+    Vec2 top_left, bottom_right; // the square that contains all particles
     get_particle_area(top_left, bottom_right);
 
-    end = std::chrono::steady_clock::now();
-    double get_particle_area_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-
-    begin = std::chrono::steady_clock::now();
-
-    tree = nullptr;
-    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right);
-
-    end = std::chrono::steady_clock::now();
-    double make_shared_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-
-    begin = std::chrono::steady_clock::now();
-
-    tree->insert(bodies);
-
-    end = std::chrono::steady_clock::now();
-    double insert_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-
-    begin = std::chrono::steady_clock::now();
+    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, true);
 
     tree->update(theta, G, dt, calculations_per_frame);
-
-    end = std::chrono::steady_clock::now();
-    double update_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-
-    if ( toggle_verbose )
-    {
-        std::cout << "get_particle_area: " << get_particle_area_time << " us" << std::endl;
-        std::cout << "make_shared: " << make_shared_time << " us" << std::endl;
-        std::cout << "insert: " << insert_time << " us" << std::endl;
-        std::cout << "update: " << update_time << " us" << std::endl;
-        std::cout << "total update time in ms: " << (get_particle_area_time + make_shared_time + insert_time + update_time) / 1000 << std::endl << std::endl;
-        std::cout << "==> successfully updated simulation" << std::endl;
-    }
 }
 
 void SimulationManager::draw_simulation(bool half_step)
@@ -356,14 +325,55 @@ void SimulationManager::draw_simulation(bool half_step)
 
     draw_vectors();
 
-    //draw_bodies_with_density();
     draw_bodies();
     window->display();
 }
-// ------------------------------------------------------------------------
+
+
 // ====================================
 // ========= DRAW FUNCTIONS ===========
 // ====================================
+
+sf::Color interpolateColor(const sf::Color& color1, const sf::Color& color2, double t)
+{
+    // Interpolate the red, green, blue
+    sf::Uint8 r = static_cast<sf::Uint8>(color1.r * (1.0 - t) + color2.r * t);
+    sf::Uint8 g = static_cast<sf::Uint8>(color1.g * (1.0 - t) + color2.g * t);
+    sf::Uint8 b = static_cast<sf::Uint8>(color1.b * (1.0 - t) + color2.b * t);
+
+    // Return the interpolated color
+    return sf::Color(r, g, b);
+}
+
+void SimulationManager::draw_bodies()
+{
+    sf::Color low_density_color = sf::Color::Red;
+    sf::Color high_density_color = sf::Color::White;
+
+    sf::VertexArray vertices(sf::Points);
+
+    double highest_density = std::numeric_limits<double>::min();
+    double lowest_density = std::numeric_limits<double>::max();
+
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        highest_density = std::max(highest_density, bodies->acc[i].length());
+        lowest_density = std::min(lowest_density, bodies->acc[i].length());
+    }
+
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        double normalized_density = bodies->acc[i].length() / highest_density;
+
+        sf::Color color = interpolateColor(low_density_color, high_density_color, normalized_density);
+        sf::Vertex vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y), color);
+
+        vertices.append(vertex);
+    }
+
+    this->window->draw(vertices);
+}
+
 
 void SimulationManager::draw_vectors()
 {
@@ -372,7 +382,7 @@ void SimulationManager::draw_vectors()
     for ( unsigned i = 0; i < bodies->get_size(); ++i )
     {
         double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
-        double length = bodies->vel[i].length() + 15;
+        double length = bodies->vel[i].length() + 10.0;
 
         sf::Vertex line[] = {
             sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
@@ -409,126 +419,13 @@ void SimulationManager::draw_quadtree()
     }
 }
 
-void SimulationManager::draw_bodies()
-{
-    sf::CircleShape circle;
-
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        double radius = 1.0;
-        circle.setRadius(radius);
-        circle.setPosition(bodies->pos[i].x - radius, bodies->pos[i].y - radius);
-
-        // set color to #F5F5DC
-        circle.setFillColor(sf::Color{0x00F5F5DC});
-        this->window->draw(circle);
-    }
-}
-
-void SimulationManager::draw_bodies_with_density()
-{
-    unsigned max_density = 0;
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        max_density = std::max(max_density, bodies->density[i]);
-    }
-
-    sf::CircleShape circle;
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        double radius = bodies->radius[i];
-        circle.setRadius(radius);
-        circle.setPosition(bodies->pos[i].x - radius, bodies->pos[i].y - radius);
-
-        // Normalize density to the range [0, 1]
-        double normalized_density = static_cast<double>(bodies->density[i]) / max_density;
-
-        // Apply sigmoid-shaped normalization
-        double sigmoid_factor = 20.0;  // Adjust this value for the desired shape
-        double sigmoid_normalized_density = 1.0 / (1.0 + std::exp(-sigmoid_factor * (normalized_density - 0.5)));
-
-        // Map the normalized density to the color range
-        sf::Color fill_color;
-        if ( normalized_density <= 0.5 )
-        {
-            // Brown/Blueish to Red/Yellow transition
-            unsigned blue_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density * sigmoid_normalized_density);
-            unsigned red_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density);
-            fill_color = sf::Color(red_component, blue_component, blue_component / 2);
-        }
-        else
-        {
-            // Red/Yellow to White transition
-            unsigned red_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density);
-            unsigned green_component = static_cast<unsigned>(255.0 * sigmoid_normalized_density * sigmoid_normalized_density);
-            fill_color = sf::Color(red_component, green_component, 0);
-        }
-
-        // Set the transparency based on density
-        sf::Uint8 transparency = static_cast<sf::Uint8>(51u * bodies->density[i] / max_density);
-        fill_color.a = (transparency * 5 < 150) ? 150 : transparency * 5;
-        circle.setFillColor(fill_color);
-
-        window->draw(circle);
-    }
-}
-
-sf::Color HSLtoRGB(float hue, float saturation, float lightness)
-{
-    float chroma = (1 - std::abs(2 * lightness - 1)) * saturation;
-    float hue_prime = hue / 60.0;
-
-    float x = chroma * (1 - std::abs(fmod(hue_prime, 2) - 1));
-
-    float red = 0.0;
-    float green = 0.0;
-
-    if ( hue_prime >= 0 && hue_prime < 1 )
-    {
-        red = chroma;
-        green = x;
-    }
-    else if ( hue_prime >= 1 && hue_prime < 2 )
-    {
-        red = x;
-        green = chroma;
-    }
-    else if ( hue_prime >= 2 && hue_prime < 3 )
-    {
-        green = chroma;
-        red = -x;
-    }
-    else if ( hue_prime >= 3 && hue_prime < 4 )
-    {
-        green = x;
-        red = -chroma;
-    }
-    else if ( hue_prime >= 4 && hue_prime < 5 )
-    {
-        red = -chroma;
-        green = -x;
-    }
-    else if ( hue_prime >= 5 && hue_prime < 6 )
-    {
-        red = -x;
-        green = -chroma;
-    }
-
-    float m = lightness - chroma / 2.0;
-
-    return sf::Color((red + m) * 255, (green + m) * 255, (m) * 255);
-}
-
-// ------------------------------------------------------------------------
 // ====================================
 // ========= EVENT HANDLING ===========
 // ====================================
 
 void SimulationManager::handle_window_events()
 {
-    if ( toggle_verbose ) std::cout << "=> SimulationManager::handle_window_events()" << std::endl;
     window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug, dt, G);
-    if ( toggle_verbose ) std::cout << "==> successfully handled window events" << std::endl;
 }
 
 void SimulationManager::print_debug_info()
@@ -543,22 +440,313 @@ std::string SimulationManager::get_debug_info()
     double current_ratio_worst = bodies->get_size() * bodies->get_size() / this->calculations_per_frame;
     double current_ratio_best = bodies->get_size() * log2(bodies->get_size()) / this->calculations_per_frame;
 
-    ss << "########################################" << std::endl << std::endl;
-    ss << std::left << std::setw(20) << "STEP: " << this->steps << std::endl;
-    ss << std::left << std::setw(20) << "particles: " << this->bodies->get_size() << std::endl << std::endl;
 
-    ss << std::left << std::setw(20) << "phys time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
-    ss << std::left << std::setw(20) << "graph time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
-    ss << std::left << std::setw(20) << "total time: " << this->total_frame_time / 1000 << " ms" << std::endl << std::endl;
+    ss << std::left << std::setw(21) << "|--- STEP: " << this->steps << std::endl;
 
-    ss << std::left << std::setw(20) << "fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time;
-    ss << " (" << std::fixed << std::setprecision(3) << 1e6 * 2.0 / this->total_frame_time << ")" << std::endl << std::endl;
+    ss << std::left << std::setw(21) << "| particles: " << this->bodies->get_size() << std::endl;
+    ss << std::left << "|" << std::endl;
 
-    ss << std::left << std::setw(20) << "calc per frame: " << this->calculations_per_frame << std::endl;
-    ss << std::left << std::setw(20) << "total calc: " << this->total_calculations << std::endl << std::endl;
+    ss << std::left << std::setw(21) << "| phys time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
+    ss << std::left << std::setw(21) << "| graph time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
+    ss << std::left << std::setw(21) << "| total time: " << this->total_frame_time / 1000 << " ms" << std::endl;
+    ss << std::left << "|" << std::endl;
 
-    //ss << std::left << std::setw(20) << "worst case: " << std::fixed << std::setprecision(2) << current_ratio_worst * 100.0 << "% " << ((current_ratio_worst > 1.0) ? "faster" : "slower") << std::endl;
-    //ss << std::left << std::setw(20) << "best case: " << std::fixed << std::setprecision(2) << current_ratio_best * 100.0 << "% " << ((current_ratio_best > 1.0) ? "faster" : "slower") << std::endl << std::endl;
+    ss << std::left << std::setw(21) << "| fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl;
+    ss << std::left << "|" << std::endl;
+
+    ss << std::left << std::setw(21) << "| calc per frame: " << this->calculations_per_frame << std::endl;
+    ss << std::left << std::setw(21) << "| total calc: " << this->total_calculations << std::endl << std::endl;
 
     return ss.str();
+}
+
+
+
+
+
+
+
+
+// ====================================
+// functions to draw fourteen segment display letters
+// ====================================
+
+void horizontal_line(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    for ( unsigned i = index; i < index + amount; ++i )
+    {
+        double x_pos = rand() % width + x;
+        double y_pos = y + (rand() % thickness - thickness / 2);  // Adjust y randomly within thickness
+
+        bodies->pos[i] = Vec2(x_pos, y_pos);
+
+        bodies->mass[i] = 10.0;
+        bodies->radius[i] = 1.0;
+
+        bodies->to_be_deleted[i] = false;
+    }
+}
+
+void vertical_line(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    for ( unsigned i = index; i < index + amount; ++i )
+    {
+        double x_pos = x + (rand() % thickness - thickness / 2);  // Adjust x randomly within thickness
+        double y_pos = rand() % height + y;
+
+        bodies->pos[i] = Vec2(x_pos, y_pos);
+
+        bodies->mass[i] = 10.0;
+        bodies->radius[i] = 1.0;
+
+        bodies->to_be_deleted[i] = false;
+    }
+}
+
+void diagonal_line_left(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    for ( unsigned i = index; i < index + amount; ++i )
+    {
+        double ratio = (double) (i - index) / amount;
+        double x_pos = ratio * width + x + (rand() % thickness - thickness / 2);
+        double y_pos = ratio * height + y + (rand() % thickness - thickness / 2);
+
+        bodies->pos[i] = Vec2(x_pos, y_pos);
+
+        bodies->mass[i] = 10.0;
+        bodies->radius[i] = 1.0;
+
+        bodies->to_be_deleted[i] = false;
+    }
+}
+
+void diagonal_line_right(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    for ( unsigned i = index; i < index + amount; ++i )
+    {
+        double ratio = (double) (i - index) / amount;
+        double x_pos = (1 - ratio) * width + x + (rand() % thickness - thickness / 2);  // invert ratio for right diagonal
+        double y_pos = ratio * height + y + (rand() % thickness - thickness / 2);
+
+        bodies->pos[i] = Vec2(x_pos, y_pos);
+
+        bodies->mass[i] = 10.0;
+        bodies->radius[i] = 1.0;
+
+        bodies->to_be_deleted[i] = false;
+    }
+}
+
+// functions to draw parts of 14 segment display letters
+void horizontal_top(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    horizontal_line(bodies, index, amount, x, y + thickness / 2, width, thickness, thickness);
+}
+
+void horizontal_bottom(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    horizontal_line(bodies, index, amount, x, y + height - thickness / 2, width, thickness, thickness);
+}
+
+void horizontal_middle_left(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    horizontal_line(bodies, index, amount, x, y + height / 2, width / 2, thickness, thickness);
+}
+
+void horizontal_middle_right(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    horizontal_line(bodies, index, amount, x + width / 2, y + height / 2, width / 2, thickness, thickness);
+}
+
+void vertical_top_left(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    vertical_line(bodies, index, amount, x + thickness / 2, y, thickness, height / 2, thickness);
+}
+
+void vertical_top_right(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    vertical_line(bodies, index, amount, x + width - thickness / 2, y, thickness, height / 2, thickness);
+}
+
+void vertical_bottom_left(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    vertical_line(bodies, index, amount, x + thickness / 2, y + height / 2, thickness, height / 2, thickness);
+}
+
+void vertical_bottom_right(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    vertical_line(bodies, index, amount, x + width - thickness / 2, y + height / 2, thickness, height / 2, thickness);
+}
+
+void vertical_top_middle(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    vertical_line(bodies, index, amount, x + width / 2, y, thickness, height / 2, thickness);
+}
+
+void vertical_bottom_middle(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    vertical_line(bodies, index, amount, x + width / 2, y + height / 2, thickness, height / 2, thickness);
+}
+
+void draw_letter(std::vector<bool> segments, std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
+{
+    // every segment has the same amount of particles, except the middle segment. the middle segment has half the amount of particles and is index 0 and 1
+    unsigned segment_count = [segments]() -> unsigned
+    {
+        unsigned count = (segments[0] + segments[1]) / 2;
+        for ( unsigned i = 2; i < segments.size(); ++i )
+        {
+            if ( segments[i] )
+            {
+                ++count;
+            }
+        }
+        return count;
+    }();
+
+    if ( segments[0] )
+    {
+        horizontal_middle_left(bodies, index, (amount / segment_count) / 2, x, y, width, height, thickness);
+    }
+
+    if ( segments[1] )
+    {
+        horizontal_middle_right(bodies, index + (amount / segment_count) / 2, (amount / segment_count) / 2, x, y, width, height, thickness);
+    }
+
+    if ( segments[2] )
+    {
+        horizontal_top(bodies, index + amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[3] )
+    {
+        horizontal_bottom(bodies, index + 2 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[4] )
+    {
+        vertical_top_left(bodies, index + 3 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[5] )
+    {
+        vertical_top_right(bodies, index + 4 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[6] )
+    {
+        vertical_bottom_left(bodies, index + 5 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[7] )
+    {
+        vertical_bottom_right(bodies, index + 6 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[8] )
+    {
+        vertical_top_middle(bodies, index + 7 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[9] )
+    {
+        vertical_bottom_middle(bodies, index + 8 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[10] )
+    {
+        diagonal_line_left(bodies, index + 9 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[11] )
+    {
+        diagonal_line_right(bodies, index + 10 * amount / segment_count, amount / segment_count, x, y, width, height, thickness);
+    }
+
+    if ( segments[12] )
+    {
+        diagonal_line_left(bodies, index + 11 * amount / segment_count, amount / segment_count, x, y + height, width, -height, thickness);
+    }
+
+    if ( segments[13] )
+    {
+        diagonal_line_right(bodies, index + 12 * amount / segment_count, amount / segment_count, x, y + height, width, -height, thickness);
+    }
+}
+
+void SimulationManager::add_lisa(unsigned count, double mass)
+{
+    if ( count < 4 )
+    {
+        std::cout << "Error: Insufficient number of bodies to draw 'LISA'." << std::endl;
+        return;
+    }
+
+    if ( count > bodies->get_size() )
+    {
+        bodies->resize(count);
+    }
+
+    // Calculate the size of each letter there should be nice spacing between the letters and the edges of the screen and the letters themselves
+    unsigned letterWidth = window->get_width() / 2.0;
+    unsigned letterHeight = window->get_height() / 6.0;
+
+    unsigned spacing_top = letterHeight / 2.0;
+    unsigned spacing_bottom = letterHeight / 2.0;
+    unsigned spacing_left = letterWidth / 2.0;
+    unsigned spacing_right = letterWidth / 2.0;
+
+    unsigned spacing_between_letters = letterHeight / 3.0;
+
+    // lambda that returns the position of the top left corner of the letter based on the letter index
+    auto get_top_left = [=](unsigned index) -> Vec2
+    {
+        unsigned y = spacing_top + (index * (letterHeight + spacing_between_letters));
+        unsigned x = spacing_left;
+
+        return Vec2(x, y);
+    };
+
+    unsigned particles_per_letter = count / 4;
+    unsigned thickness = 10;
+
+    // L
+    horizontal_bottom(bodies, 0, particles_per_letter / 3, get_top_left(0).x, get_top_left(0).y, letterWidth, letterHeight, thickness);
+    vertical_top_left(bodies, particles_per_letter / 3, particles_per_letter / 3, get_top_left(0).x, get_top_left(0).y, letterWidth, letterHeight, thickness);
+    vertical_bottom_left(bodies, 2 * particles_per_letter / 3, particles_per_letter / 3, get_top_left(0).x, get_top_left(0).y, letterWidth, letterHeight, thickness);
+
+    // I
+    vertical_top_middle(bodies, particles_per_letter, particles_per_letter / 2, get_top_left(1).x, get_top_left(1).y, letterWidth, letterHeight, thickness);
+    vertical_bottom_middle(bodies, particles_per_letter + particles_per_letter / 2, particles_per_letter / 2, get_top_left(1).x, get_top_left(1).y, letterWidth, letterHeight, thickness);
+
+    // S
+    horizontal_top(bodies, 2 * particles_per_letter, particles_per_letter / 5, get_top_left(2).x, get_top_left(2).y, letterWidth, letterHeight, thickness);
+    horizontal_bottom(bodies, 2 * particles_per_letter + particles_per_letter / 5, particles_per_letter / 5, get_top_left(2).x, get_top_left(2).y, letterWidth, letterHeight, thickness);
+
+    vertical_top_left(bodies, 2 * particles_per_letter + 2 * particles_per_letter / 5, particles_per_letter / 5, get_top_left(2).x, get_top_left(2).y, letterWidth, letterHeight, thickness);
+    vertical_bottom_right(bodies, 2 * particles_per_letter + 3 * particles_per_letter / 5, particles_per_letter / 5, get_top_left(2).x, get_top_left(2).y, letterWidth, letterHeight, thickness);
+
+    horizontal_middle_left(bodies, 2 * particles_per_letter + 4 * particles_per_letter / 5, particles_per_letter / 10, get_top_left(2).x, get_top_left(2).y, letterWidth, letterHeight, thickness);
+    horizontal_middle_right(bodies, 2 * particles_per_letter + 9 * particles_per_letter / 10, particles_per_letter / 10, get_top_left(2).x, get_top_left(2).y, letterWidth, letterHeight, thickness);
+
+    // A
+    horizontal_top(bodies, 3 * particles_per_letter, particles_per_letter / 6, get_top_left(3).x, get_top_left(3).y, letterWidth, letterHeight, thickness);
+
+    vertical_bottom_right(bodies, 3 * particles_per_letter + particles_per_letter / 6, particles_per_letter / 5, get_top_left(3).x, get_top_left(3).y, letterWidth, letterHeight, thickness);
+    vertical_bottom_left(bodies, 3 * particles_per_letter + 2 * particles_per_letter / 6, particles_per_letter / 5, get_top_left(3).x, get_top_left(3).y, letterWidth, letterHeight, thickness);
+
+    vertical_top_left(bodies, 3 * particles_per_letter + 3 * particles_per_letter / 6, particles_per_letter / 5, get_top_left(3).x, get_top_left(3).y, letterWidth, letterHeight, thickness);
+    vertical_top_right(bodies, 3 * particles_per_letter + 4 * particles_per_letter / 6, particles_per_letter / 5, get_top_left(3).x, get_top_left(3).y, letterWidth, letterHeight, thickness);
+
+    horizontal_middle_left(bodies, 3 * particles_per_letter + 5 * particles_per_letter / 6, particles_per_letter / 12, get_top_left(3).x, get_top_left(3).y, letterWidth, letterHeight, thickness);
+    horizontal_middle_right(bodies, 3 * particles_per_letter + 11 * particles_per_letter / 12, particles_per_letter / 12, get_top_left(3).x, get_top_left(3).y, letterWidth, letterHeight, thickness);
+
+    bodies->remove_merged_bodies();
+
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        bodies->mass[i] = mass;
+        bodies->radius[i] = 1.0;
+    }
 }

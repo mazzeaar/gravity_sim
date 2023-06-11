@@ -1,10 +1,10 @@
 #include "QuadTree.h"
 
 /*----------------------------------------
-|        constructors/destructor         |
+|         Constructor/Destructor         |
 -----------------------------------------*/
 
-QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right) :
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right, bool root) :
     top_left(top_left), bottom_right(bottom_right)
 {
     this->bodies = bodies;
@@ -18,10 +18,19 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
     NE = nullptr;
     SW = nullptr;
     SE = nullptr;
+
+    if ( root )
+    {
+        for ( unsigned i = 0; i < bodies->get_size(); ++i )
+        {
+            bodies->acc[i] = Vec2(0, 0);
+            this->insert(i);
+        }
+    }
 }
 
-QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax) :
-    QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax))
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax, bool root) :
+    QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax), root)
 {}
 
 QuadTree::~QuadTree()
@@ -32,24 +41,46 @@ QuadTree::~QuadTree()
     SE = nullptr;
 }
 
-void QuadTree::clear()
+
+/*----------------------------------------
+|             public methods             |
+-----------------------------------------*/
+
+void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
-    mass = 0.0;
-    center_of_mass = Vec2(0, 0);
-    body_index = -1;
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        compute_force(i, theta, G, calculations_per_frame);
+    }
+
+    bodies->remove_merged_bodies();
+    bodies->update(dt);
+}
+
+void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
+{
+    sf::RectangleShape* rect = new sf::RectangleShape(); // Create a dynamic object
+
+    rect->setSize(sf::Vector2f(bottom_right.x - top_left.x, bottom_right.y - top_left.y));
+    rect->setPosition(sf::Vector2f(top_left.x, top_left.y));
+    rect->setFillColor(sf::Color::Transparent);
+    rect->setOutlineColor(sf::Color::Green);
+    rect->setOutlineThickness(1.0f);
+
+    rectangles.push_back(rect);
 
     if ( NW != nullptr )
     {
-        NW->clear();
-        NE->clear();
-        SW->clear();
-        SE->clear();
+        NW->get_bounding_rectangles(rectangles);
+        NE->get_bounding_rectangles(rectangles);
+        SW->get_bounding_rectangles(rectangles);
+        SE->get_bounding_rectangles(rectangles);
     }
 }
 
 
 /*----------------------------------------
-|             boolean checks             |
+|             private methods            |
 -----------------------------------------*/
 
 bool QuadTree::contains(unsigned index)
@@ -82,19 +113,6 @@ bool QuadTree::subdivide()
     return true;
 }
 
-
-/*----------------------------------------
-|                 insert                 |
------------------------------------------*/
-
-void QuadTree::insert(std::shared_ptr<Bodies> bodies)
-{
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        insert(i);
-    }
-}
-
 void QuadTree::insert(unsigned index)
 {
     // If the body is not in this quadrant, do not add it.
@@ -108,8 +126,6 @@ void QuadTree::insert(unsigned index)
         this->body_index = index;
         this->mass = bodies->mass[index];
         this->center_of_mass = bodies->pos[index];
-
-        bodies->density[index] = depth;
 
         return;
     }
@@ -153,10 +169,6 @@ void QuadTree::insert(unsigned index)
     }
 }
 
-/*----------------------------------------
-|                 update                 |
------------------------------------------*/
-
 void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
 {
     std::stack<QuadTree*> stack;
@@ -184,7 +196,7 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
         }
         else
         {
-            // Push children onto the stack in reverse order (clockwise from top-right)
+            // Push children onto the stack in reverse order
             if ( node->NE != nullptr ) stack.push(node->NE.get());
             if ( node->NW != nullptr ) stack.push(node->NW.get());
             if ( node->SE != nullptr ) stack.push(node->SE.get());
@@ -193,52 +205,9 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
     }
 }
 
-
 double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance)
 {
-    const double epsilon_squared = 0.4; // softening factor, else force goes BRRRRRT
+    // softening factor, else force goes BRRRRRT
+    const double epsilon_squared = 2.0;
     return G * mass1 * mass2 / (squared_distance + epsilon_squared);
-}
-
-void QuadTree::compute_force_on_children(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
-{
-    NW->compute_force(index, theta, G, calculations_per_frame);
-    NE->compute_force(index, theta, G, calculations_per_frame);
-    SW->compute_force(index, theta, G, calculations_per_frame);
-    SE->compute_force(index, theta, G, calculations_per_frame);
-}
-
-void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
-{
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        compute_force(i, theta, G, calculations_per_frame);
-    }
-
-    bodies->remove_merged_bodies();
-}
-
-/*----------------------------------------
-|                 print                  |
------------------------------------------*/
-
-void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
-{
-    sf::RectangleShape* rect = new sf::RectangleShape(); // Create a dynamic object
-
-    rect->setSize(sf::Vector2f(bottom_right.x - top_left.x, bottom_right.y - top_left.y));
-    rect->setPosition(sf::Vector2f(top_left.x, top_left.y));
-    rect->setFillColor(sf::Color::Transparent);
-    rect->setOutlineColor(sf::Color::Green);
-    rect->setOutlineThickness(1.0f);
-
-    rectangles.push_back(rect);
-
-    if ( NW != nullptr )
-    {
-        NW->get_bounding_rectangles(rectangles);
-        NE->get_bounding_rectangles(rectangles);
-        SW->get_bounding_rectangles(rectangles);
-        SE->get_bounding_rectangles(rectangles);
-    }
 }

@@ -15,9 +15,6 @@ private:
     int width, height;
 
 public:
-    sf::CircleShape* circle;
-    sf::RectangleShape* rect;
-
     bool paused;
 
     Window(int width, int height, const char* title);
@@ -28,6 +25,8 @@ public:
     void draw(const sf::Shape& shape);
     void draw(const sf::RectangleShape& shape);
     void draw(const sf::Vertex* line, int size, sf::PrimitiveType type);
+    void draw(const sf::VertexArray& vertices);
+    void draw(const sf::VertexArray& vertices, sf::RenderStates states);
 
     void display();
     void close();

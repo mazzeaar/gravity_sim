@@ -34,6 +34,16 @@ void Window::draw(const sf::Vertex* line, int size, sf::PrimitiveType type)
     window->draw(line, size, type);
 }
 
+void Window::draw(const sf::VertexArray& vertices)
+{
+    window->draw(vertices);
+}
+
+void Window::draw(const sf::VertexArray& vertices, sf::RenderStates states)
+{
+    window->draw(vertices, states);
+}
+
 void Window::store_png(const std::string& filename)
 {
     sf::Texture texture;
@@ -74,61 +84,61 @@ void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree,
     sf::Event event;
     sf::RenderWindow& currentWindow = *window;  // Store a reference to the window
 
-    while (currentWindow.pollEvent(event))
+    while ( currentWindow.pollEvent(event) )
     {
-        if (event.type == sf::Event::Closed)
+        if ( event.type == sf::Event::Closed )
         {
             currentWindow.close();
         }
-        else if (event.type == sf::Event::KeyPressed)
+        else if ( event.type == sf::Event::KeyPressed )
         {
-            if (event.key.code == sf::Keyboard::Escape)
+            if ( event.key.code == sf::Keyboard::Escape )
             {
                 currentWindow.close();
                 std::cout << "closing window" << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Space)
+            else if ( event.key.code == sf::Keyboard::Space )
             {
                 toggle_pause = !toggle_pause;
                 std::cout << "toggle_pause = " << toggle_pause << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Q)
+            else if ( event.key.code == sf::Keyboard::Q )
             {
                 toggle_draw_quadtree = !toggle_draw_quadtree;
                 std::cout << "toggle_draw_quadtree = " << toggle_draw_quadtree << std::endl;
             }
 
-            else if (event.key.code == sf::Keyboard::V)
+            else if ( event.key.code == sf::Keyboard::V )
             {
                 toggle_draw_vectors = !toggle_draw_vectors;
                 std::cout << "toggle_draw_vectors = " << toggle_draw_vectors << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::D)
+            else if ( event.key.code == sf::Keyboard::D )
             {
                 toggle_debug = !toggle_debug;
                 std::cout << "toggle_debug = " << toggle_debug << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Right)
+            else if ( event.key.code == sf::Keyboard::Right )
             {
                 dt += 0.05;
                 std::cout << "increased dt to " << dt << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Left)
+            else if ( event.key.code == sf::Keyboard::Left )
             {
                 dt = std::max(0.05, dt - 0.05);
                 std::cout << "decreased dt to " << dt << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Up)
+            else if ( event.key.code == sf::Keyboard::Up )
             {
                 G *= 2;
                 std::cout << "increased G to " << G << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Down)
+            else if ( event.key.code == sf::Keyboard::Down )
             {
                 G /= 2;
                 std::cout << "decreased G to " << G << std::endl;
             }
-            else if (event.key.code == sf::Keyboard::Return)
+            else if ( event.key.code == sf::Keyboard::Return )
             {
                 G = 6.67408e-3;
                 dt = 0.1;

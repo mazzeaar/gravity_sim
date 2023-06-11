@@ -71,6 +71,8 @@
     "algorithm": "cpp",
     "functional": "cpp",
     "filesystem": "cpp",
-    "utility": "cpp"
+    "utility": "cpp",
+    "future": "cpp",
+    "queue": "cpp"
   }
 }
