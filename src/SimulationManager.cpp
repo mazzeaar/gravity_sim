@@ -10,6 +10,7 @@ SimulationManager::SimulationManager(const int width, const int height, const ch
 
     bodies = std::make_shared<Bodies>(1000);
     tree = std::make_shared<QuadTree>(bodies, xmin, ymin, xmax, ymax);
+    particle_manager = std::make_shared<ParticleManager>(bodies, width, height);
 
     window = new Window(width, height, title);
     steps = 0;
@@ -22,203 +23,9 @@ SimulationManager::~SimulationManager()
     delete window;
 }
 
-
-
-
-void SimulationManager::add_bodies(unsigned count, double mass, enum BodyType body_type)
+void SimulationManager::add_bodies(unsigned count, double mass, BodyType body_type)
 {
-    if ( count > bodies->get_size() )
-    {
-        bodies->resize(count);
-    }
-
-    switch ( body_type )
-    {
-    case BodyType::SPINNING_CIRCLE:
-        add_spinning_circle(count, mass);
-        break;
-    case BodyType::GALAXY:
-        add_galaxy(count, mass);
-        break;
-    case BodyType::ROTATING_CUBES:
-        add_rotating_cubes(count, mass);
-        break;
-    case BodyType::RANDOM:
-        add_random_bodies(count, mass);
-        break;
-    case BodyType::LISA:
-        add_lisa(count, mass);
-        break;
-    default:
-        std::cout << "Error: Invalid body type." << std::endl;
-        break;
-    }
-}
-
-void SimulationManager::add_spinning_circle(unsigned count, double mass)
-{
-    for ( unsigned i = 0; i < count; ++i )
-    {
-        bodies->mass[i] = mass;
-        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
-
-        // circle that fits in the screen using the golden ratio
-        double x = window->get_width() / 2.0 + window->get_height() / 2.0 * 0.418 * cos(2.0 * M_PI * i / count);
-        double y = window->get_height() / 2.0 + window->get_height() / 2.0 * 0.418 * sin(2.0 * M_PI * i / count);
-
-        bodies->pos[i] = Vec2(x, y);
-
-        // bodies should rotate around the center of the screen, velocity is proportional to the distance to the center
-        Vec2 center(window->get_width() / 2.0, window->get_height() / 2.0);
-        Vec2 direction = (bodies->pos[i] - center).normalize();
-        Vec2 perpendicular = Vec2(-direction.y, direction.x);
-
-        bodies->vel[i] = perpendicular * bodies->pos[i].dist(center) * 0.06;
-    }
-}
-
-void SimulationManager::add_galaxy(unsigned count, double mass)
-{
-    double armCount = 3.0;       // Number of spiral arms
-    double armTightness = 0.5;   // Tightness of the spiral arms
-    double armVelocity = 0.03;   // Orbital velocity of the arms
-
-    double center_x = window->get_width() / 2.0;
-    double center_y = window->get_height() / 2.0;
-    double max_distance = std::min(center_x, center_y) * 0.9; // Limit the maximum distance from the center
-
-    for ( unsigned i = 0; i < count; ++i )
-    {
-        bodies->mass[i] = mass;
-        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
-
-        double angle = static_cast<double>(rand()) / RAND_MAX * 2.0 * M_PI; // Random angle in radians
-        double distance = static_cast<double>(rand()) / RAND_MAX * max_distance; // Random distance from the center
-
-        double totalArmAngle = 5.0;
-
-        for ( int j = 0; j < armCount; ++j )
-        {
-            // Add spiral arm effect to the angle
-            double armAngle = armTightness * angle + (j + 1) * distance / max_distance * 2.0 * M_PI;
-            double x = center_x + distance * cos(armAngle + totalArmAngle);
-            double y = center_y + distance * sin(armAngle + totalArmAngle);
-
-            bodies->pos[i] = Vec2(x, y);
-
-            Vec2 direction = (bodies->pos[i] - Vec2(center_x, center_y)).normalize();
-            Vec2 perpendicular = Vec2(-direction.y, direction.x);
-
-            bodies->vel[i] = perpendicular * distance * armVelocity;
-
-            totalArmAngle += armAngle;
-        }
-    }
-}
-
-void SimulationManager::add_rotating_cubes(unsigned count, double mass)
-{
-    double center_x = window->get_width() / 2.0;
-    double center_y = window->get_height() / 2.0;
-
-    double center_top_left_x = window->get_width() / 4.0;
-    double center_top_left_y = window->get_height() / 4.0;
-
-    double center_bottom_right_x = window->get_width() * 3.0 / 4.0;
-    double center_bottom_right_y = window->get_height() * 3.0 / 4.0;
-
-    double cubeSize = 800.0; // Size of the cubes
-    double speed = 0.04;     // Orbital speed of the cubes
-
-    for ( unsigned i = 0; i < bodies->get_size() / 2; ++i )
-    {
-        bodies->mass[i] = mass;
-        bodies->radius[i] = 1.0;
-
-        double x = center_top_left_x + (static_cast<double>(rand()) / RAND_MAX - 0.5) * cubeSize;
-        double y = center_top_left_y + (static_cast<double>(rand()) / RAND_MAX - 0.5) * cubeSize;
-        bodies->pos[i] = Vec2(x, y);
-
-        Vec2 direction = (bodies->pos[i] - Vec2(center_top_left_x, center_top_left_y)).normalize();
-        Vec2 perpendicular = Vec2(-direction.y, direction.x);
-
-        bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(center_top_left_x, center_top_left_y)) * speed;
-    }
-
-    for ( unsigned i = bodies->get_size() / 2; i < bodies->get_size(); ++i )
-    {
-        bodies->mass[i] = mass;
-        bodies->radius[i] = cubeSize;
-
-        double x = center_bottom_right_x + (static_cast<double>(rand()) / RAND_MAX - 0.5) * cubeSize;
-        double y = center_bottom_right_y + (static_cast<double>(rand()) / RAND_MAX - 0.5) * cubeSize;
-        bodies->pos[i] = Vec2(x, y);
-
-        Vec2 direction = (bodies->pos[i] - Vec2(center_bottom_right_x, center_bottom_right_y)).normalize();
-        Vec2 perpendicular = Vec2(-direction.y, direction.x);
-
-        bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(center_bottom_right_x, center_bottom_right_y)) * speed;
-    }
-}
-
-void SimulationManager::add_random_bodies(unsigned count, double mass)
-{
-    for ( unsigned i = 0; i < count; ++i )
-    {
-        bodies->mass[i] = mass;
-        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
-
-        double x = rand() % window->get_width();
-        double y = rand() % window->get_height();
-
-        bodies->pos[i] = Vec2(x, y);
-
-        bodies->vel[i] = Vec2(0.0, 0.0);
-    }
-}
-
-void SimulationManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
-{
-    // initialize the rectangle to the opposite corners of the screen
-    top_left = Vec2(window->get_width(), window->get_height());
-    bottom_right = Vec2(0, 0);
-
-    // find the bounding square that contains all particles
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        if ( bodies->pos[i].x < top_left.x )
-        {
-            top_left.x = bodies->pos[i].x;
-        }
-
-        if ( bodies->pos[i].x > bottom_right.x )
-        {
-            bottom_right.x = bodies->pos[i].x;
-        }
-
-        if ( bodies->pos[i].y < top_left.y )
-        {
-            top_left.y = bodies->pos[i].y;
-        }
-
-        if ( bodies->pos[i].y > bottom_right.y )
-        {
-            bottom_right.y = bodies->pos[i].y;
-        }
-    }
-
-    // fix the rectangle to be a square. make sure to center the particles
-    double width = bottom_right.x - top_left.x;
-    double height = bottom_right.y - top_left.y;
-
-    if ( width > height )
-    {
-        bottom_right.y = top_left.y + width;
-    }
-    else
-    {
-        bottom_right.x = top_left.x + height;
-    }
+    particle_manager->add_bodies(body_type, count, mass);
 }
 
 // ------------------------------------------------------------------------
@@ -251,7 +58,7 @@ void SimulationManager::run()
     print_start_info();
 
     Vec2 top_left, bottom_right;
-    get_particle_area(top_left, bottom_right);
+    particle_manager->get_particle_area(top_left, bottom_right);
 
     tree = nullptr;
     tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, true);
@@ -303,7 +110,7 @@ void SimulationManager::run()
 void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
 {
     Vec2 top_left, bottom_right; // the square that contains all particles
-    get_particle_area(top_left, bottom_right);
+    particle_manager->get_particle_area(top_left, bottom_right);
 
     tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, true);
 
@@ -471,6 +278,9 @@ std::string SimulationManager::get_debug_info()
 // functions to draw fourteen segment display letters
 // ====================================
 
+// clean this up in a different class. maybe make modular
+
+/*
 void horizontal_line(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
 {
     for ( unsigned i = index; i < index + amount; ++i )
@@ -536,6 +346,7 @@ void diagonal_line_right(std::shared_ptr<Bodies> bodies, unsigned index, unsigne
         bodies->to_be_deleted[i] = false;
     }
 }
+
 
 // functions to draw parts of 14 segment display letters
 void horizontal_top(std::shared_ptr<Bodies> bodies, unsigned index, unsigned amount, unsigned x, unsigned y, unsigned width, unsigned height, unsigned thickness)
@@ -675,7 +486,7 @@ void draw_letter(std::vector<bool> segments, std::shared_ptr<Bodies> bodies, uns
     }
 }
 
-void SimulationManager::add_lisa(unsigned count, double mass)
+void add_lisa(unsigned count, double mass)
 {
     if ( count < 4 )
     {
@@ -750,3 +561,4 @@ void SimulationManager::add_lisa(unsigned count, double mass)
         bodies->radius[i] = 1.0;
     }
 }
+*/

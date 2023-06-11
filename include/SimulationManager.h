@@ -4,6 +4,8 @@
 #include "QuadTree.h"
 #include "Window.h"
 #include "Vec2.h"
+#include "Bodies.h"
+#include "ParticleManager.h"
 
 #include <SFML/Graphics.hpp>
 #include <vector>
@@ -13,14 +15,6 @@
 #include <iostream>
 #include <sstream>
 
-enum BodyType {
-    SPINNING_CIRCLE,
-    GALAXY,
-    ROTATING_CUBES,
-    RANDOM,
-    LISA
-};
-
 class SimulationManager {
 private:
 
@@ -28,6 +22,7 @@ private:
     Window* window;
 
     std::shared_ptr<QuadTree> tree;
+    std::shared_ptr<ParticleManager> particle_manager;
 
     std::vector<sf::RectangleShape*> bounding_boxes;
 
@@ -62,8 +57,6 @@ public:
     void draw_quadtree();
     void draw_old_quadtree();
 
-    void get_particle_area(Vec2& top_left, Vec2& bottom_right);
-
     void print_start_info();
     void handle_window_events();
     void print_debug_info();
@@ -89,11 +82,6 @@ public:
     inline void decrease_G(double G) { this->G = std::max(0.0, this->G - 0.1); }
 
     void add_bodies(unsigned count = 8000, double mass = 1.0, BodyType type = BodyType::RANDOM);
-    void add_lisa(unsigned count, double mass);
-    void add_galaxy(unsigned count, double mass);
-    void add_rotating_cubes(unsigned count, double mass);
-    void add_spinning_circle(unsigned count, double mass);
-    void add_random_bodies(unsigned count, double mass);
 };
 
 #endif // SIMULATION_MANAGER_H
