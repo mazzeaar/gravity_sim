@@ -7,3 +7,6 @@
 /build/*
 /images/dump/*
 /.vscode/*
+ds_store
+.gitignore
+```
