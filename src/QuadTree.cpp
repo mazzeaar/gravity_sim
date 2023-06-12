@@ -179,7 +179,7 @@ void QuadTree::insert(unsigned index)
         }
         else
         {
-            // bodies->merge_bodies(this->body_index, index); // removes a lot of bodies
+            //bodies->merge_bodies(this->body_index, index); // removes a lot of bodies
             // this->body_index = index;
             return;
         }

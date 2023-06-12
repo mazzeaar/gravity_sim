@@ -108,6 +108,7 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
     Vec2 top_left, bottom_right; // the square that contains all particles
     particle_manager->get_particle_area(top_left, bottom_right);
 
+    tree = nullptr;
     std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
     tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, rectangles, true);
 

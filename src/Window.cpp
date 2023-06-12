@@ -61,12 +61,10 @@ void Window::draw_bodies()
 
     auto interpolateColor = [&](double t) -> sf::Color
     {
-        // Interpolate the red, green, blue
         sf::Uint8 r = static_cast<sf::Uint8>(low_density_color.r * (1.0 - t) + high_density_color.r * t);
         sf::Uint8 g = static_cast<sf::Uint8>(low_density_color.g * (1.0 - t) + high_density_color.g * t);
         sf::Uint8 b = static_cast<sf::Uint8>(low_density_color.b * (1.0 - t) + high_density_color.b * t);
 
-        // Return the interpolated color
         return sf::Color(r, g, b);
     };
 

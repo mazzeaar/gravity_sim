@@ -10,7 +10,7 @@ const double G = 6.67408e-3; // 10e8 stronger gravity
 const double theta = 1.4;
 const double dt = 0.1;
 
-const unsigned body_count = 60000;
+const unsigned body_count = 69420;
 const double mass = 10;
 
 const int height = 2200;
