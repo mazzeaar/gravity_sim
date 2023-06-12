@@ -1,3 +1,6 @@
+#ifndef PARTICLE_MANAGER_H
+#define PARTICLE_MANAGER_H
+
 #include "Bodies.h"
 
 enum BodyType {
@@ -26,3 +29,5 @@ public:
     void add_bodies(BodyType type = BodyType::GALAXY, unsigned num_bodies = 20000, double mass = 1.0);
     void get_particle_area(Vec2& top_left, Vec2& bottom_right);
 };
+
+#endif // PARTICLE_MANAGER_H

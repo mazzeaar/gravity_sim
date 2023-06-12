@@ -4,8 +4,8 @@
 |         Constructor/Destructor         |
 -----------------------------------------*/
 
-QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right, bool root) :
-    top_left(top_left), bottom_right(bottom_right)
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right, std::shared_ptr<sf::VertexArray> rectangles, bool root) :
+    top_left(top_left), bottom_right(bottom_right), rectangles(rectangles)
 {
     this->bodies = bodies;
 
@@ -27,10 +27,49 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
             this->insert(i);
         }
     }
+
+    if ( rectangles == nullptr )
+    {
+        rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 5);
+    }
+
+    sf::Vertex vertex;
+
+    vertex.position = sf::Vector2f(top_left.x, top_left.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, top_left.y);
+    vertex.color = sf::Color::Green;
+    rectangles->append(vertex);
 }
 
-QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax, bool root) :
-    QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax), root)
+QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax, std::shared_ptr<sf::VertexArray> rectangles, bool root) :
+    QuadTree(bodies, Vec2(xmin, ymin), Vec2(xmax, ymax), rectangles, root)
 {}
 
 QuadTree::~QuadTree()
@@ -57,27 +96,6 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
     bodies->update(dt);
 }
 
-void QuadTree::get_bounding_rectangles(std::vector<sf::RectangleShape*>& rectangles) const
-{
-    sf::RectangleShape* rect = new sf::RectangleShape(); // Create a dynamic object
-
-    rect->setSize(sf::Vector2f(bottom_right.x - top_left.x, bottom_right.y - top_left.y));
-    rect->setPosition(sf::Vector2f(top_left.x, top_left.y));
-    rect->setFillColor(sf::Color::Transparent);
-    rect->setOutlineColor(sf::Color::Green);
-    rect->setOutlineThickness(1.0f);
-
-    rectangles.push_back(rect);
-
-    if ( NW != nullptr )
-    {
-        NW->get_bounding_rectangles(rectangles);
-        NE->get_bounding_rectangles(rectangles);
-        SW->get_bounding_rectangles(rectangles);
-        SE->get_bounding_rectangles(rectangles);
-    }
-}
-
 /*----------------------------------------
 |             private methods            |
 -----------------------------------------*/
@@ -99,10 +117,10 @@ bool QuadTree::subdivide()
         return false;
     }
 
-    this->NW = std::make_unique<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0);
-    this->NE = std::make_unique<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0));
-    this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y));
-    this->SE = std::make_unique<QuadTree>(bodies, (top_left + bottom_right) / 2.0, bottom_right);
+    this->NW = std::make_unique<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0, rectangles, false);
+    this->NE = std::make_unique<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0), rectangles, false);
+    this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y), rectangles, false);
+    this->SE = std::make_unique<QuadTree>(bodies, (top_left + bottom_right) / 2.0, bottom_right, rectangles, false);
 
     NW->depth = depth + 1;
     NE->depth = depth + 1;
@@ -161,7 +179,7 @@ void QuadTree::insert(unsigned index)
         }
         else
         {
-            // bodies->merge_bodies(this->body_index, index); // removes a lot of bodies
+            //bodies->merge_bodies(this->body_index, index); // removes a lot of bodies
             // this->body_index = index;
             return;
         }
