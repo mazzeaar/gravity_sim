@@ -2,6 +2,7 @@
 #define QUAD_TREE_H
 
 #include "Bodies.h"
+#include "Vec2.h"
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
@@ -24,6 +25,8 @@ private:
     std::unique_ptr<QuadTree> SW;
     std::unique_ptr<QuadTree> SE;
 
+    std::shared_ptr<sf::VertexArray> rectangles;
+
     void insert(unsigned index);
     bool subdivide();
 
@@ -36,13 +39,13 @@ private:
 public:
     std::shared_ptr<Bodies> bodies;
 
-    QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right, bool is_root = false);
-    QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax, bool is_root = false);
+    QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_right, std::shared_ptr<sf::VertexArray> rectangles = nullptr, bool is_root = false);
+    QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax, std::shared_ptr<sf::VertexArray> rectangles = nullptr, bool is_root = false);
 
     ~QuadTree();
 
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
-    void get_bounding_rectangles(std::vector<sf::RectangleShape*>& bounding_boxes) const;
+    sf::VertexArray* get_bounding_rectangles() const { return rectangles.get(); }
 };
 
 #endif // QUADTREE_H

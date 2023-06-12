@@ -1,12 +1,24 @@
 #include "Window.h"
 
-Window::Window(int width, int height, const char* title)
+/*----------------------------------------
+|         Constructor/Destructor         |
+-----------------------------------------*/
+
+Window::Window(int width, int height, const char* title, std::shared_ptr<SimulationManager> simulation_manager)
     : width(width), height(height)
 {
+    this->simulation_manager = simulation_manager;
+    this->bodies = this->simulation_manager->get_bodies();
+
+    std::cout << bodies->get_size() << std::endl;
+
     window = new sf::RenderWindow(sf::VideoMode(width, height), title);
     window->setVerticalSyncEnabled(true);
     window->setPosition(sf::Vector2i(0, 0));
     window->setFramerateLimit(0);
+
+    window->display();
+
 }
 
 Window::~Window()
@@ -14,72 +26,99 @@ Window::~Window()
     delete window;
 }
 
-void Window::clear()
+/*----------------------------------------
+|             public methods             |
+-----------------------------------------*/
+
+void Window::update()
 {
+    handle_events();
+
     window->clear();
-}
+    draw_bodies();
 
-void Window::draw(const sf::Shape& shape)
-{
-    window->draw(shape);
-}
+    if ( simulation_manager->get_toggle_draw_vectors() )
+    {
+        draw_velocity_vectors();
+    }
 
-void Window::draw(const sf::RectangleShape& shape)
-{
-    window->draw(shape);
-}
+    if ( simulation_manager->get_toggle_draw_quadtree() )
+    {
+        draw_quadtree_bounds();
+    }
 
-void Window::draw(const sf::Vertex* line, int size, sf::PrimitiveType type)
-{
-    window->draw(line, size, type);
-}
-
-void Window::draw(const sf::VertexArray& vertices)
-{
-    window->draw(vertices);
-}
-
-void Window::draw(const sf::VertexArray& vertices, sf::RenderStates states)
-{
-    window->draw(vertices, states);
-}
-
-void Window::store_png(const std::string& filename)
-{
-    sf::Texture texture;
-    texture.create(this->width, this->height);
-    texture.update(*window);
-    texture.copyToImage().saveToFile(filename);
-}
-
-void Window::display()
-{
     window->display();
 }
 
-void Window::close()
+/*----------------------------------------
+|            private methods             |
+-----------------------------------------*/
+
+void Window::draw_bodies()
 {
-    window->close();
+    sf::Color low_density_color = sf::Color::Red;
+    sf::Color high_density_color = sf::Color::White;
+
+    auto interpolateColor = [&](double t) -> sf::Color
+    {
+        // Interpolate the red, green, blue
+        sf::Uint8 r = static_cast<sf::Uint8>(low_density_color.r * (1.0 - t) + high_density_color.r * t);
+        sf::Uint8 g = static_cast<sf::Uint8>(low_density_color.g * (1.0 - t) + high_density_color.g * t);
+        sf::Uint8 b = static_cast<sf::Uint8>(low_density_color.b * (1.0 - t) + high_density_color.b * t);
+
+        // Return the interpolated color
+        return sf::Color(r, g, b);
+    };
+
+    sf::VertexArray vertices(sf::Points);
+
+    double highest_density = std::numeric_limits<double>::min();
+    double lowest_density = std::numeric_limits<double>::max();
+
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        highest_density = std::max(highest_density, bodies->acc[i].length());
+        lowest_density = std::min(lowest_density, bodies->acc[i].length());
+    }
+
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        double normalized_density = bodies->acc[i].length() / highest_density;
+
+        sf::Color color = interpolateColor(normalized_density);
+        sf::Vertex vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y), color);
+
+        vertices.append(vertex);
+    }
+
+    window->draw(vertices);
 }
 
-int Window::get_width()
+void Window::draw_velocity_vectors()
 {
-    return width;
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
+        double length = bodies->vel[i].length() + 10.0;
+
+        sf::Vertex line[] = {
+            sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
+            sf::Vertex(sf::Vector2f(bodies->pos[i].x + cos(angle) * length, bodies->pos[i].y + sin(angle) * length))
+        };
+
+        line[0].color.a *= 0.3;
+        line[1].color.a *= 0.3;
+
+        window->draw(line, 2, sf::Lines);
+    }
 }
 
-int Window::get_height()
+void Window::draw_quadtree_bounds()
 {
-    return height;
+    window->draw(*simulation_manager->get_bounding_rectangles());
 }
 
-bool Window::is_open()
-{
-    return window->isOpen();
-}
-
-void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree,
-    bool& toggle_draw_vectors, bool& toggle_debug,
-    double& dt, double& G)
+void Window::handle_events()
 {
     sf::Event event;
     sf::RenderWindow& currentWindow = *window;  // Store a reference to the window
@@ -99,52 +138,74 @@ void Window::handle_events(bool& toggle_pause, bool& toggle_draw_quadtree,
             }
             else if ( event.key.code == sf::Keyboard::Space )
             {
-                toggle_pause = !toggle_pause;
-                std::cout << "toggle_pause = " << toggle_pause << std::endl;
+                simulation_manager->toggle_pause();
+                std::cout << "toggle_pause = " << simulation_manager->get_toggle_paused() << std::endl;
             }
             else if ( event.key.code == sf::Keyboard::Q )
             {
-                toggle_draw_quadtree = !toggle_draw_quadtree;
-                std::cout << "toggle_draw_quadtree = " << toggle_draw_quadtree << std::endl;
+                simulation_manager->toggle_draw_quadtree();
+                std::cout << "toggle_draw_quadtree = " << simulation_manager->get_toggle_draw_quadtree() << std::endl;
             }
 
             else if ( event.key.code == sf::Keyboard::V )
             {
-                toggle_draw_vectors = !toggle_draw_vectors;
-                std::cout << "toggle_draw_vectors = " << toggle_draw_vectors << std::endl;
+                simulation_manager->toggle_draw_vectors();
+                std::cout << "toggle_draw_vectors = " << simulation_manager->get_toggle_draw_vectors() << std::endl;
             }
             else if ( event.key.code == sf::Keyboard::D )
             {
-                toggle_debug = !toggle_debug;
-                std::cout << "toggle_debug = " << toggle_debug << std::endl;
+                simulation_manager->toggle_debug_info();
+                std::cout << "toggle_debug = " << simulation_manager->get_toggle_debug() << std::endl;
             }
             else if ( event.key.code == sf::Keyboard::Right )
             {
-                dt += 0.05;
-                std::cout << "increased dt to " << dt << std::endl;
+                simulation_manager->increase_dt();
+                std::cout << "increased dt to " << simulation_manager->get_dt() << std::endl;
             }
             else if ( event.key.code == sf::Keyboard::Left )
             {
-                dt = std::max(0.05, dt - 0.05);
-                std::cout << "decreased dt to " << dt << std::endl;
+                simulation_manager->decrease_dt();
+                std::cout << "decreased dt to " << simulation_manager->get_dt() << std::endl;
             }
             else if ( event.key.code == sf::Keyboard::Up )
             {
-                G *= 2;
-                std::cout << "increased G to " << G << std::endl;
+                simulation_manager->increase_G();
+                std::cout << "increased G to " << simulation_manager->get_G() << std::endl;
             }
             else if ( event.key.code == sf::Keyboard::Down )
             {
-                G /= 2;
-                std::cout << "decreased G to " << G << std::endl;
-            }
-            else if ( event.key.code == sf::Keyboard::Return )
-            {
-                G = 6.67408e-3;
-                dt = 0.1;
-                std::cout << "reset G to " << G << std::endl;
-                std::cout << "reset dt to " << dt << std::endl;
+                simulation_manager->decrease_G();
+                std::cout << "decreased G to " << simulation_manager->get_G() << std::endl;
             }
         }
     }
+}
+
+
+/*----------------------------------------
+|            old methods             |
+-----------------------------------------*/
+
+
+void Window::store_png(const std::string& filename)
+{
+    sf::Texture texture;
+    texture.create(this->width, this->height);
+    texture.update(*window);
+    texture.copyToImage().saveToFile(filename);
+}
+
+int Window::get_width()
+{
+    return width;
+}
+
+int Window::get_height()
+{
+    return height;
+}
+
+bool Window::is_open()
+{
+    return window->isOpen();
 }

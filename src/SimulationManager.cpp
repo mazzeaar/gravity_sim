@@ -1,7 +1,7 @@
 #include "SimulationManager.h"
 
 SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
-    : G(G), theta(theta), dt(dt), toggle_paused(true), toggle_draw_quadtree(false), toggle_draw_vectors(false), toggle_debug(false), total_calculations(0)
+    : G(G), theta(theta), dt(dt), paused(true), draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
 {
     double xmin = 0.0;
     double ymin = 0.0;
@@ -9,10 +9,13 @@ SimulationManager::SimulationManager(const int width, const int height, const ch
     double ymax = static_cast<double>(height);
 
     bodies = std::make_shared<Bodies>(1000);
-    tree = std::make_shared<QuadTree>(bodies, xmin, ymin, xmax, ymax);
+
+    std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
+    tree = std::make_shared<QuadTree>(bodies, xmin, ymin, xmax, ymax, rectangles, true);
+
     particle_manager = std::make_shared<ParticleManager>(bodies, width, height);
 
-    window = new Window(width, height, title);
+    window = nullptr;
     steps = 0;
 }
 
@@ -20,7 +23,8 @@ SimulationManager::~SimulationManager()
 {
     bodies = nullptr;
     tree = nullptr;
-    delete window;
+    particle_manager = nullptr;
+    window = nullptr;
 }
 
 void SimulationManager::add_bodies(unsigned count, double mass, BodyType body_type)
@@ -61,47 +65,39 @@ void SimulationManager::run()
     particle_manager->get_particle_area(top_left, bottom_right);
 
     tree = nullptr;
-    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, true);
+    std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
+    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, rectangles, true);
 
-    update_simulation(calculations_per_frame);
-
-    double worst_case = bodies->get_size() * bodies->get_size();
-    double best_case = bodies->get_size() * log2(bodies->get_size());
-
-    std::chrono::steady_clock::time_point begin;
-
+    std::chrono::high_resolution_clock::time_point start_time;
     while ( window->is_open() )
     {
-        ++steps;
-
+        /*
         std::string filename = std::to_string(steps) + ".png";
 
         while ( filename.size() < 7 )
         {
             filename = "0" + filename;
         }
-        //window->store_png("./images/dump/" + filename);
+        window->store_png("./images/dump/" + filename);
+        */
 
-        handle_window_events();
+        ++steps;
 
-        if ( !toggle_paused )
+        if ( !paused )
         {
-            // update the forces and positions of the bodies
-            begin = std::chrono::steady_clock::now();
+            start_time = std::chrono::high_resolution_clock::now();
             update_simulation(calculations_per_frame);
-            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin).count();
+            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
 
             total_calculations += calculations_per_frame;
 
-            if ( toggle_debug ) print_debug_info();
+            if ( debug ) print_debug_info();
             calculations_per_frame = 0;
         }
 
-        // draw the bodies
-        begin = std::chrono::steady_clock::now();
-        draw_simulation();
-
-        elapsed_time_graphics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - begin).count();
+        start_time = std::chrono::high_resolution_clock::now();
+        window->update();
+        elapsed_time_graphics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
         total_frame_time = elapsed_time_physics + elapsed_time_graphics;
     }
 }
@@ -112,128 +108,15 @@ void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
     Vec2 top_left, bottom_right; // the square that contains all particles
     particle_manager->get_particle_area(top_left, bottom_right);
 
-    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, true);
+    std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
+    tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, rectangles, true);
 
     tree->update(theta, G, dt, calculations_per_frame);
-}
-
-void SimulationManager::draw_simulation(bool half_step)
-{
-    window->clear();
-
-    if ( !half_step )
-    {
-        draw_quadtree();
-    }
-    else
-    {
-        draw_old_quadtree();
-    }
-
-    draw_vectors();
-
-    draw_bodies();
-    window->display();
-}
-
-
-// ====================================
-// ========= DRAW FUNCTIONS ===========
-// ====================================
-
-sf::Color interpolateColor(const sf::Color& color1, const sf::Color& color2, double t)
-{
-    // Interpolate the red, green, blue
-    sf::Uint8 r = static_cast<sf::Uint8>(color1.r * (1.0 - t) + color2.r * t);
-    sf::Uint8 g = static_cast<sf::Uint8>(color1.g * (1.0 - t) + color2.g * t);
-    sf::Uint8 b = static_cast<sf::Uint8>(color1.b * (1.0 - t) + color2.b * t);
-
-    // Return the interpolated color
-    return sf::Color(r, g, b);
-}
-
-void SimulationManager::draw_bodies()
-{
-    sf::Color low_density_color = sf::Color::Red;
-    sf::Color high_density_color = sf::Color::White;
-
-    sf::VertexArray vertices(sf::Points);
-
-    double highest_density = std::numeric_limits<double>::min();
-    double lowest_density = std::numeric_limits<double>::max();
-
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        highest_density = std::max(highest_density, bodies->acc[i].length());
-        lowest_density = std::min(lowest_density, bodies->acc[i].length());
-    }
-
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        double normalized_density = bodies->acc[i].length() / highest_density;
-
-        sf::Color color = interpolateColor(low_density_color, high_density_color, normalized_density);
-        sf::Vertex vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y), color);
-
-        vertices.append(vertex);
-    }
-
-    this->window->draw(vertices);
-}
-
-
-void SimulationManager::draw_vectors()
-{
-    if ( !toggle_draw_vectors ) return;
-
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        double angle = atan2(bodies->vel[i].y, bodies->vel[i].x);
-        double length = bodies->vel[i].length() + 10.0;
-
-        sf::Vertex line[] = {
-            sf::Vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y)),
-            sf::Vertex(sf::Vector2f(bodies->pos[i].x + cos(angle) * length, bodies->pos[i].y + sin(angle) * length))
-        };
-
-        line[0].color.a *= 0.3;
-        line[1].color.a *= 0.3;
-
-        window->draw(line, 2, sf::Lines);
-    }
-}
-
-void SimulationManager::draw_old_quadtree()
-{
-    if ( !toggle_draw_quadtree ) return;
-
-    for ( sf::RectangleShape* rectangle : bounding_boxes )
-    {
-        window->draw(*rectangle);
-    }
-}
-
-void SimulationManager::draw_quadtree()
-{
-    if ( !toggle_draw_quadtree ) return;
-
-    bounding_boxes.clear();
-    tree->get_bounding_rectangles(bounding_boxes);
-
-    for ( sf::RectangleShape* rectangle : bounding_boxes )
-    {
-        window->draw(*rectangle);
-    }
 }
 
 // ====================================
 // ========= EVENT HANDLING ===========
 // ====================================
-
-void SimulationManager::handle_window_events()
-{
-    window->handle_events(toggle_paused, toggle_draw_quadtree, toggle_draw_vectors, toggle_debug, dt, G);
-}
 
 void SimulationManager::print_debug_info()
 {
@@ -266,13 +149,6 @@ std::string SimulationManager::get_debug_info()
 
     return ss.str();
 }
-
-
-
-
-
-
-
 
 // ====================================
 // functions to draw fourteen segment display letters
