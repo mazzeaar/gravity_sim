@@ -4,7 +4,7 @@ This project is an implementation of a 2D gravity simulation using the Barnes-Hu
 
 Please note that the current implementation is not optimal, and there are numerous improvements that can be made.
 
-- [ ] use [MVC](https://en.wikipedia.org/wiki/Model–view–controller) design pattern
+- [x] use [MVC](https://en.wikipedia.org/wiki/Model–view–controller) design pattern
 - [x] fix the quadtree instead of reconstructing it
   - tried it, i think its slower but i have to look at it again some other time
 - [ ] implement [spacial hashing](https://en.wikipedia.org/wiki/Geometric_hashing) and some [integrator](https://en.wikipedia.org/wiki/Numerical_integration) for the physics
