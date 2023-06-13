@@ -75,6 +75,7 @@ void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
         }
     }
 
+    // Calculate the width and height
     double width = bottom_right.x - top_left.x;
     double height = bottom_right.y - top_left.y;
 
@@ -93,6 +94,7 @@ void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
         bottom_right.x += offset;
     }
 }
+
 
 
 /*----------------------------------------

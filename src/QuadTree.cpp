@@ -115,7 +115,6 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
     bodies->update(dt);
 }
 
-
 /*----------------------------------------
 |             private methods            |
 -----------------------------------------*/

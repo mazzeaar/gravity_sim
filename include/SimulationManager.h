@@ -102,6 +102,18 @@ public:
     // Other Functions
     void add_bodies(unsigned count = 8000, double mass = 1.0, BodyType type = BodyType::RANDOM);
     inline sf::VertexArray* get_bounding_rectangles() const { return tree->get_bounding_rectangles(); };
+
+    double get_current_ratio_worst_case();
+    double get_current_ratio_best_case();
+    double get_average_ratio_best_case();
+    double get_average_ratio_worst_case();
+    double get_fps();
+    double get_elapsed_time_physics();
+    double get_elapsed_time_graphics();
+    double get_total_frame_time();
+    double get_interactions_per_frame();
+    double get_total_interactions();
+    double get_num_particles();
 };
 
 #endif // SIMULATION_MANAGER_H

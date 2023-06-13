@@ -171,16 +171,87 @@ void Window::draw_quadtree_bounds()
 
 void Window::draw_debug()
 {
-    sf::Text text;
-    text.setPosition(10, 10);
-    text.setFillColor(sf::Color::White);
-    text.setFont(font);
+    unsigned left_offset = 20;
+    unsigned top_offset = 20;
+    unsigned text_top_offset = 50;
+    unsigned values_left_offset = 230;
 
-    std::string debug_string = simulation_manager->get_debug_info();
-    text.setString(debug_string);
+    sf::Text statusText;
+    statusText.setPosition(left_offset, top_offset);
+    statusText.setFont(font);
+    statusText.setOutlineColor(sf::Color::Black);
 
-    window->draw(text);
+    if ( simulation_manager->get_toggle_paused() )
+    {
+        statusText.setString("PAUSED");
+        statusText.setFillColor(sf::Color::Red);
+    }
+    else
+    {
+        statusText.setString("RUNNING");
+        statusText.setFillColor(sf::Color::Green);
+    }
+
+    window->draw(statusText);
+
+    sf::Text names;
+    names.setPosition(left_offset, top_offset + text_top_offset);
+    names.setFont(font);
+    names.setFillColor(sf::Color::White);
+    names.setOutlineColor(sf::Color::Black);
+
+    names.setString(
+        std::string("|--- STEP:\n") +
+        std::string("|    particles:\n") +
+        std::string("|--\n") +
+        std::string("|    FPS:\n") +
+        std::string("|--\n") +
+        std::string("|    G:\n") +
+        std::string("|    theta:\n") +
+        std::string("|    dt:\n") +
+        std::string("|--\n") +
+        std::string("|    physics:\n") +
+        std::string("|    drawing:\n") +
+        std::string("|    TOTAL:\n") +
+        std::string("|--\n") +
+        std::string("|    calc/frame:\n") +
+        std::string("|    total calc:\n") +
+        std::string("|--\n") +
+        std::string("|    worst case:\n") +
+        std::string("|    best case:\n") +
+        std::string("|---------\n")
+    );
+
+    window->draw(names);
+
+    sf::Text values;
+    values.setPosition(left_offset + values_left_offset, top_offset + text_top_offset);
+    values.setFont(font);
+    values.setFillColor(sf::Color(200, 200, 200, 255));
+    values.setOutlineColor(sf::Color::Black);
+
+    std::stringstream valueStream;
+
+    valueStream << std::left;
+    valueStream << simulation_manager->get_step() << "\n";
+    valueStream << simulation_manager->get_num_particles() << "\n\n";
+    valueStream << std::fixed << std::setprecision(3) << simulation_manager->get_fps() << "\n\n";
+    valueStream << std::scientific << std::setprecision(4) << simulation_manager->get_G() << "\n";
+    valueStream << std::fixed << std::setprecision(1) << simulation_manager->get_theta() << "\n";
+    valueStream << std::fixed << std::setprecision(2) << simulation_manager->get_dt() << "\n\n";
+    valueStream << this->simulation_manager->get_elapsed_time_physics() << " ms\n";
+    valueStream << this->simulation_manager->get_elapsed_time_graphics() << " ms\n";
+    valueStream << this->simulation_manager->get_total_frame_time() << " ms\n\n";
+    valueStream << std::setprecision(2) << std::scientific << static_cast<double>(this->simulation_manager->get_calculations_per_frame()) << "\n";
+    valueStream << std::setprecision(2) << std::scientific << static_cast<double>(this->simulation_manager->get_total_interactions()) << "\n\n" << std::fixed;
+    valueStream << std::setprecision(2) << simulation_manager->get_current_ratio_worst_case() << "x     (~" << simulation_manager->get_average_ratio_worst_case() << ")\n";
+    valueStream << std::setprecision(2) << simulation_manager->get_current_ratio_best_case() << "x     (~" << simulation_manager->get_average_ratio_best_case() << ")\n";
+
+    values.setString(valueStream.str());
+    window->draw(values);
 }
+
+
 
 void Window::draw_start_screen()
 {

@@ -170,6 +170,88 @@ std::string SimulationManager::get_start_info()
     return ss.str();
 }
 
+double SimulationManager::get_current_ratio_worst_case()
+{
+    if ( calc_best_case == 0 || calc_worst_case == 0 )
+    {
+        calc_best_case = bodies->get_size() * bodies->get_size();
+        calc_worst_case = bodies->get_size() * log2(bodies->get_size());
+
+        return calc_worst_case;
+    }
+
+    return calc_best_case / static_cast<double>(this->calculations_per_frame);
+}
+
+double SimulationManager::get_current_ratio_best_case()
+{
+    if ( calc_best_case == 0 || calc_worst_case == 0 )
+    {
+        calc_best_case = bodies->get_size() * bodies->get_size();
+        calc_worst_case = bodies->get_size() * log2(bodies->get_size());
+
+        return calc_best_case;
+    }
+
+    return calc_worst_case / static_cast<double>(this->calculations_per_frame);
+}
+
+double SimulationManager::get_average_ratio_best_case()
+{
+    if ( paused )
+    {
+        return average_ratio_best_case;
+    }
+
+    average_ratio_best_case = (average_ratio_best_case * (steps - 1) + get_current_ratio_best_case()) / steps;
+    return average_ratio_best_case;
+}
+
+double SimulationManager::get_average_ratio_worst_case()
+{
+    if ( paused )
+    {
+        return average_ratio_worst_case;
+    }
+
+    average_ratio_worst_case = (average_ratio_worst_case * (steps - 1) + get_current_ratio_worst_case()) / steps;
+    return average_ratio_worst_case;
+}
+
+double SimulationManager::get_fps()
+{
+    return 1e6 * 1.0 / this->total_frame_time;
+}
+
+double SimulationManager::get_elapsed_time_physics()
+{
+    return this->elapsed_time_physics / 1000;
+}
+
+double SimulationManager::get_elapsed_time_graphics()
+{
+    return this->elapsed_time_graphics / 1000;
+}
+
+double SimulationManager::get_total_frame_time()
+{
+    return this->total_frame_time / 1000;
+}
+
+double SimulationManager::get_interactions_per_frame()
+{
+    return static_cast<double>(this->calculations_per_frame);
+}
+
+double SimulationManager::get_total_interactions()
+{
+    return static_cast<double>(this->total_calculations);
+}
+
+double SimulationManager::get_num_particles()
+{
+    return static_cast<double>(bodies->get_size());
+}
 
 // ====================================
 // functions to draw fourteen segment display letters
