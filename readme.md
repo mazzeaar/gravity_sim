@@ -7,10 +7,11 @@ Please note that the current implementation is not optimal, and there are numero
 - [x] use [MVC](https://en.wikipedia.org/wiki/Model–view–controller) design pattern
 - [x] fix the quadtree instead of reconstructing it
   - tried it, i think its slower but i have to look at it again some other time
-- [ ] implement [spacial hashing](https://en.wikipedia.org/wiki/Geometric_hashing) and some [integrator](https://en.wikipedia.org/wiki/Numerical_integration) for the physics
 - [x] change datastructure from an array of objects (AoO) to an [object of arrays](https://stackoverflow.com/questions/37988451/convert-array-of-objects-to-an-object-of-arrays) (OoA), this should improve memory access
+- [x] lastly implement real multithreading and if possible do calculations directly on the gpu
+  - kinda did it i think, it runs with $5-7$ fps with $n=500'000$
 - [ ] some graphics API, not SFML lol
-- [ ] lastly implement real multithreading and if possible do calculations directly on the gpu
+- [ ] implement [spacial hashing](https://en.wikipedia.org/wiki/Geometric_hashing) and some [integrator](https://en.wikipedia.org/wiki/Numerical_integration) for the physics
 
 ## Explanation
 
