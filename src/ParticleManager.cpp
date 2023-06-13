@@ -47,11 +47,11 @@ void ParticleManager::add_bodies(BodyType type, unsigned num_bodies, double mass
 
 void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
 {
-    // initialize the rectangle to the opposite corners of the screen
+    // Initialize the rectangle to the opposite corners of the screen
     top_left = Vec2(width, height);
     bottom_right = Vec2(0, 0);
 
-    // find the bounding square that contains all particles
+    // Find the bounding square that contains all particles
     for ( unsigned i = 0; i < bodies->get_size(); ++i )
     {
         if ( bodies->pos[i].x < top_left.x )
@@ -80,13 +80,20 @@ void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
 
     if ( width > height )
     {
+        double offset = (width - height) / 2.0;
         bottom_right.y = top_left.y + width;
+        top_left.y -= offset;
+        bottom_right.y += offset;
     }
     else
     {
+        double offset = (height - width) / 2.0;
         bottom_right.x = top_left.x + height;
+        top_left.x -= offset;
+        bottom_right.x += offset;
     }
 }
+
 
 /*----------------------------------------
 |            private methods             |
@@ -200,25 +207,30 @@ void ParticleManager::add_rotating_cubes(unsigned count, double mass)
 
 void ParticleManager::add_random(unsigned count, double mass)
 {
-    // add random bodies, 1/ 10th of the width and height away from the edges
-    // use gaussian distribution for the particles
-
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::poisson_distribution<> d(1.0);
+    std::normal_distribution<double> distribution(0.0, 1.0);
+
+    double edgeOffsetX = width / 10.0;
+    double edgeOffsetY = height / 10.0;
 
     for ( unsigned i = 0; i < count; ++i )
     {
         bodies->mass[i] = mass;
-        bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
+        bodies->radius[i] = 1.0;
 
-        double x = width / 2.0 + (static_cast<double>(rand()) / RAND_MAX - 0.5) * 6.0 * width / 7.0;
-        double y = height / 2.0 + (static_cast<double>(rand()) / RAND_MAX - 0.5) * 6.0 * height / 7.0;
-
+        // Generate random positions using Gaussian distribution
+        double x = width / 2.0 + edgeOffsetX * distribution(gen);
+        double y = height / 2.0 + edgeOffsetY * distribution(gen);
         bodies->pos[i] = Vec2(x, y);
 
-        double vx = 0.3 * d(gen);
-        double vy = 0.3 * d(gen);
+        double velocity_scalar = 5.0;
+
+        Vec2 direction = (bodies->pos[i] - Vec2(width / 2.0, height / 2.0)).normalize();
+        Vec2 perpendicular = Vec2(-direction.y, direction.x);
+
+        double vx = perpendicular.x * velocity_scalar;
+        double vy = perpendicular.y * velocity_scalar;
 
         bodies->vel[i] = Vec2(vx, vy);
     }

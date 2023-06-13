@@ -91,16 +91,32 @@ bool Window::is_open()
 
 void Window::draw_bodies()
 {
-    sf::Color low_density_color = sf::Color::Red;
-    sf::Color high_density_color = sf::Color::White;
+    double interpolation_cutoff = 0.2;
+
+    sf::Color low_density_color = sf::Color(0, 128, 255);      // Light blue
+    sf::Color mid_density_color = sf::Color(255, 0, 255);     // Magenta
+    sf::Color high_density_color = sf::Color(255, 255, 0);    // Yellow
 
     auto interpolateColor = [&](double t) -> sf::Color // t is in range [0, 1]
     {
-        sf::Uint8 r = static_cast<sf::Uint8>(low_density_color.r * (1.0 - t) + high_density_color.r * t);
-        sf::Uint8 g = static_cast<sf::Uint8>(low_density_color.g * (1.0 - t) + high_density_color.g * t);
-        sf::Uint8 b = static_cast<sf::Uint8>(low_density_color.b * (1.0 - t) + high_density_color.b * t);
+        if ( t < interpolation_cutoff )
+        {
+            double t2 = t / interpolation_cutoff;
+            sf::Uint8 r = static_cast<sf::Uint8>(low_density_color.r * (1.0 - t2) + mid_density_color.r * t2);
+            sf::Uint8 g = static_cast<sf::Uint8>(low_density_color.g * (1.0 - t2) + mid_density_color.g * t2);
+            sf::Uint8 b = static_cast<sf::Uint8>(low_density_color.b * (1.0 - t2) + mid_density_color.b * t2);
 
-        return sf::Color(r, g, b);
+            return sf::Color(r, g, b, 255);
+        }
+        else
+        {
+            double t2 = (t - interpolation_cutoff) / (1 - interpolation_cutoff);
+            sf::Uint8 r = static_cast<sf::Uint8>(mid_density_color.r * (1.0 - t2) + high_density_color.r * t2);
+            sf::Uint8 g = static_cast<sf::Uint8>(mid_density_color.g * (1.0 - t2) + high_density_color.g * t2);
+            sf::Uint8 b = static_cast<sf::Uint8>(mid_density_color.b * (1.0 - t2) + high_density_color.b * t2);
+
+            return sf::Color(r, g, b, 255);
+        }
     };
 
     sf::VertexArray vertices(sf::Points);
@@ -122,9 +138,10 @@ void Window::draw_bodies()
     window->draw(vertices);
 }
 
+
 void Window::draw_velocity_vectors()
 {
-    const double lineLengthMultiplier = 0.4;
+    const double lineLengthMultiplier = 1.0;
 
     sf::VertexArray lines(sf::Lines);
     lines.resize(bodies->get_size() * 2);
@@ -146,7 +163,6 @@ void Window::draw_velocity_vectors()
 
     window->draw(lines);
 }
-
 
 void Window::draw_quadtree_bounds()
 {

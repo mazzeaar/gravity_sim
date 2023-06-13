@@ -152,12 +152,6 @@ bool QuadTree::subdivide()
 
 void QuadTree::insert(unsigned index)
 {
-    // If the body is not in this quadrant, do not add it.
-    if ( !contains(index) )
-    {
-        return;
-    }
-
     if ( this->mass == 0 )
     {
         this->body_index = index;
@@ -181,7 +175,6 @@ void QuadTree::insert(unsigned index)
     }
     else if ( this->body_index == -1 )
     {
-        // if no body is contained, we can just add the body
         this->body_index = index;
         return;
     }
@@ -189,7 +182,6 @@ void QuadTree::insert(unsigned index)
     {
         if ( this->subdivide() )
         {
-            // move present body to new quadrant
             unsigned old_index = this->body_index;
             this->body_index = -1;
 
@@ -199,10 +191,6 @@ void QuadTree::insert(unsigned index)
         }
         else
         {
-            //bodies->merge_bodies(this->body_index, index); // removes a lot of bodies
-            // this->body_index = index;
-
-            // both bodies loose a bit of velocity and a bit acc
             return;
         }
     }
@@ -235,7 +223,6 @@ void QuadTree::compute_force(unsigned index, double theta, double G, unsigned lo
         }
         else
         {
-            // Push children onto the stack in reverse order
             if ( node->NE != nullptr ) stack.push(node->NE.get());
             if ( node->NW != nullptr ) stack.push(node->NW.get());
             if ( node->SE != nullptr ) stack.push(node->SE.get());

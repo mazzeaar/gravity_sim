@@ -106,24 +106,42 @@ std::string SimulationManager::get_debug_info()
 {
     std::stringstream ss;
 
-    double current_ratio_worst = bodies->get_size() * bodies->get_size() / this->calculations_per_frame;
-    double current_ratio_best = bodies->get_size() * log2(bodies->get_size()) / this->calculations_per_frame;
+    if ( calc_best_case == 0 || calc_worst_case == 0 )
+    {
+        calc_best_case = bodies->get_size() * bodies->get_size();
+        calc_worst_case = bodies->get_size() * log2(bodies->get_size());
+    }
+
+    double current_ratio_worst = calc_best_case / static_cast<double>(this->calculations_per_frame);
+    double current_ratio_best = calc_worst_case / static_cast<double>(this->calculations_per_frame);
+
+    average_ratio_best_case = (average_ratio_best_case * (steps - 1) + current_ratio_best) / steps;
+    average_ratio_worst_case = (average_ratio_worst_case * (steps - 1) + current_ratio_worst) / steps;
 
     ss << std::left << "|--- STEP: " << this->steps << std::endl;
+    ss << std::left << "|    particles: " << this->bodies->get_size() << std::endl;
 
-    ss << std::left << "| particles: " << this->bodies->get_size() << std::endl;
+    ss << std::left << "|--" << std::endl;
+    ss << std::left << "|    FPS: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl;
     ss << std::left << "|--" << std::endl;
 
-    ss << std::left << "| physics time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
-    ss << std::left << "| drawing time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
-    ss << std::left << "| frame time: " << this->total_frame_time / 1000 << " ms" << std::endl;
+    ss << std::left << "|    G: " << std::scientific << std::setprecision(4) << G << std::endl;
+    ss << std::left << "|    theta: " << std::fixed << std::setprecision(1) << theta << std::endl;
+    ss << std::left << "|    dt: " << std::fixed << std::setprecision(2) << dt << std::endl;
     ss << std::left << "|--" << std::endl;
 
-    ss << std::left << "| fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl;
+    ss << std::left << "|    physics time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
+    ss << std::left << "|    drawing time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
+    ss << std::left << "|    frame time: " << this->total_frame_time / 1000 << " ms" << std::endl;
     ss << std::left << "|--" << std::endl;
 
-    ss << std::left << "| interactions per frame: " << std::scientific << this->calculations_per_frame << std::endl;
-    ss << std::left << "| total interactions: " << this->total_calculations << std::endl << std::endl;
+    ss << std::left << "|    interactions per frame: " << std::setprecision(2) << std::scientific << static_cast<double>(this->calculations_per_frame) << std::endl;
+    ss << std::left << "|    total interactions: " << std::setprecision(2) << std::scientific << static_cast<double>(this->total_calculations) << std::endl;
+    ss << std::left << "|--" << std::endl;
+
+    ss << std::fixed << std::left << "|    ratio to worst case: " << std::setprecision(2) << current_ratio_worst << "x (~ " << average_ratio_worst_case << ")" << std::endl;
+    ss << std::left << "|    ratio to best case: " << std::setprecision(2) << current_ratio_best << "x (~ " << average_ratio_best_case << ")" << std::endl;
+    ss << std::left << "|---------" << std::endl;
 
     return ss.str();
 }

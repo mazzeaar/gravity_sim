@@ -39,18 +39,18 @@ void readConfig(const std::string& configFile, double& G, double& theta, double&
 
 int main()
 {
-    double G = 6.67408e-11; // 10e8 stronger gravity
-    double theta = 0.5;
+    double G = 6.67408e-3; // 10e8 stronger gravity
+    double theta = 2.8;
     double dt = 0.05;
     unsigned body_count = 50000;
     double mass = 10;
     int height = 2200;
     int width = 2200;
 
-    readConfig("../CONFIG.cfg", G, theta, dt, body_count, mass, height, width);
+    //readConfig("../CONFIG.cfg", G, theta, dt, body_count, mass, height, width);
     SimulationManager* simulation_manager = new SimulationManager(width, height, "N-Body Simulation", G, theta, dt);
 
-    simulation_manager->add_bodies(body_count, mass, BodyType::SPINNING_CIRCLE);
+    simulation_manager->add_bodies(body_count, mass, BodyType::RANDOM);
     simulation_manager->toggle_debug_info();
     simulation_manager->toggle_pause();
 

@@ -39,6 +39,12 @@ private:
     long unsigned total_calculations;
     long unsigned calculations_per_frame;
 
+    double average_ratio_best_case;
+    double average_ratio_worst_case;
+
+    double calc_best_case;
+    double calc_worst_case;
+
     double elapsed_time_physics;
     double elapsed_time_graphics;
     double total_frame_time;
