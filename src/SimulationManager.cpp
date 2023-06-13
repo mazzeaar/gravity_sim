@@ -112,15 +112,15 @@ std::string SimulationManager::get_debug_info()
     ss << std::left << "|--- STEP: " << this->steps << std::endl;
 
     ss << std::left << "| particles: " << this->bodies->get_size() << std::endl;
-    ss << std::left << "|-" << std::endl;
+    ss << std::left << "|--" << std::endl;
 
     ss << std::left << "| physics time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
     ss << std::left << "| drawing time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
     ss << std::left << "| frame time: " << this->total_frame_time / 1000 << " ms" << std::endl;
-    ss << std::left << "|-" << std::endl;
+    ss << std::left << "|--" << std::endl;
 
     ss << std::left << "| fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl;
-    ss << std::left << "|-" << std::endl;
+    ss << std::left << "|--" << std::endl;
 
     ss << std::left << "| interactions per frame: " << std::scientific << this->calculations_per_frame << std::endl;
     ss << std::left << "| total interactions: " << this->total_calculations << std::endl << std::endl;
