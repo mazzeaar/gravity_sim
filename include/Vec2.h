@@ -3,14 +3,23 @@
 
 #include <ostream>
 #include <cmath>
+#include <iostream> 
 
 class Vec2 {
 public:
     double x, y;
 
-    Vec2();
-    Vec2(double x, double y);
-    Vec2(const Vec2& other);
+    Vec2() : x(0.0), y(0.0) {}
+
+    Vec2(double x, double y) : x(x), y(y) {}
+
+    Vec2(const Vec2& other) : x(other.x), y(other.y) {}
+
+    friend std::ostream& operator<<(std::ostream& os, const Vec2& vec)
+    {
+        os << "(" << vec.x << ", " << vec.y << ")";
+        return os;
+    }
 
     inline double get_x() const { return x; }
     inline double get_y() const { return y; }
@@ -118,8 +127,6 @@ public:
         double s = std::sin(angle);
         return Vec2(x * c - y * s, x * s + y * c);
     }
-
-    friend std::ostream& operator<<(std::ostream& os, const Vec2& vec);
 };
 
 #endif

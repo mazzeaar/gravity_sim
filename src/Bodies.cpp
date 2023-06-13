@@ -2,6 +2,10 @@
 #include <limits>
 #include <cmath>
 
+/*----------------------------------------
+|               Constructor              |
+-----------------------------------------*/
+
 Bodies::Bodies(unsigned num_bodies)
 {
     size = num_bodies;
@@ -13,10 +17,39 @@ Bodies::Bodies(unsigned num_bodies)
     mass.resize(num_bodies, 0.0);
     radius.resize(num_bodies, 0.0);
 
-    lowest_density = std::numeric_limits<double>::max();
-    highest_density = std::numeric_limits<double>::min();
-
     to_be_deleted.resize(num_bodies, false);
+}
+
+
+/*----------------------------------------
+|                 getters                |
+-----------------------------------------*/
+
+unsigned Bodies::get_size() const
+{
+    return size;
+}
+
+double Bodies::get_lowest_density() const
+{
+    double lowest_density = std::numeric_limits<double>::max();
+    for ( unsigned i = 0; i < size; ++i )
+    {
+        lowest_density = std::min(lowest_density, this->acc[i].length());
+    }
+
+    return lowest_density;
+}
+
+double Bodies::get_highest_density() const
+{
+    double highest_density = std::numeric_limits<double>::min();
+    for ( unsigned i = 0; i < size; ++i )
+    {
+        highest_density = std::max(highest_density, this->acc[i].length());
+    }
+
+    return highest_density;
 }
 
 void Bodies::add_force(unsigned index, const Vec2& force)
@@ -29,8 +62,14 @@ void Bodies::reset_force(unsigned index)
     acc[index] = Vec2(0.0, 0.0);
 }
 
+
+/*----------------------------------------
+|            update/modify               |
+-----------------------------------------*/
+
 void Bodies::update(double dt)
 {
+
     for ( unsigned i = 0; i < size; ++i )
     {
         vel[i] = vel[i] + acc[i] * (0.5 * dt);
@@ -76,7 +115,6 @@ void Bodies::remove_merged_bodies()
 
 void Bodies::merge_bodies(unsigned keep_index, unsigned remove_index)
 {
-
     pos[keep_index] = (pos[keep_index] * mass[keep_index] + pos[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
     vel[keep_index] = (vel[keep_index] * mass[keep_index] + vel[remove_index] * mass[remove_index]) / (mass[keep_index] + mass[remove_index]);
     acc[keep_index] += acc[remove_index];
@@ -87,10 +125,10 @@ void Bodies::merge_bodies(unsigned keep_index, unsigned remove_index)
     to_be_deleted[remove_index] = true;
 }
 
-unsigned Bodies::get_size()
-{
-    return size;
-}
+
+/*----------------------------------------
+|                 print                  |
+-----------------------------------------*/
 
 void Bodies::print() const
 {
@@ -103,7 +141,7 @@ void Bodies::print() const
 void Bodies::print(unsigned index) const
 {
     std::cout << "========================================" << std::endl;
-    std::cout << "body: " << index << ": " << std::endl;
+    std::cout << "body: " << index << ":" << std::endl;
     std::cout << " - pos: " << pos[index] << std::endl;
     std::cout << " - vel: " << vel[index] << std::endl;
     std::cout << " - acc: " << acc[index] << std::endl;

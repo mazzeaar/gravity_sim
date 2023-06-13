@@ -1,5 +1,9 @@
 #include "SimulationManager.h"
 
+/*----------------------------------------
+|         Constructor/Destructor         |
+-----------------------------------------*/
+
 SimulationManager::SimulationManager(const int width, const int height, const char* title, double G, double theta, double dt)
     : G(G), theta(theta), dt(dt), paused(true), draw_quadtree(false), draw_vectors(false), debug(false), total_calculations(0)
 {
@@ -9,6 +13,7 @@ SimulationManager::SimulationManager(const int width, const int height, const ch
     double ymax = static_cast<double>(height);
 
     bodies = std::make_shared<Bodies>(1000);
+    bodies->set_size(width, height);
 
     std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
     tree = std::make_shared<QuadTree>(bodies, xmin, ymin, xmax, ymax, rectangles, true);
@@ -27,35 +32,9 @@ SimulationManager::~SimulationManager()
     window = nullptr;
 }
 
-void SimulationManager::add_bodies(unsigned count, double mass, BodyType body_type)
-{
-    particle_manager->add_bodies(body_type, count, mass);
-}
-
-// ------------------------------------------------------------------------
-// ====================================
-// ========= SIMULATION LOOP ==========
-// ====================================
-
-void SimulationManager::print_start_info()
-{
-    std::cout << std::endl << std::endl;
-    std::cout << "========== N-Body Simulation ===========" << std::endl;
-    std::cout << "========================================" << std::endl;
-    std::cout << "========= PRESS SPACE TO START =========" << std::endl;
-    std::cout << "========================================" << std::endl;
-    std::cout << "| Number of bodies: " << bodies->get_size() << std::endl;
-    std::cout << "| G: " << G << std::endl;
-    std::cout << "| theta: " << theta << std::endl;
-    std::cout << "| dt: " << dt << std::endl;
-    std::cout << "========================================" << std::endl;
-    std::cout << "| 'space' | 'q'  | 'v'  | 'd'   | 'esc' |" << std::endl;
-    std::cout << "|  pause  | quad | vect | debug | exit  |" << std::endl;
-    std::cout << "========================================" << std::endl;
-    std::cout << "|  'left' |  'right' |  'up'  |  'down' |" << std::endl;
-    std::cout << "|   dt -  |   dt +   |   G -  |   G +   |" << std::endl;
-    std::cout << "========================================" << std::endl;
-}
+/*----------------------------------------
+|             public methods             |
+-----------------------------------------*/
 
 void SimulationManager::run()
 {
@@ -64,51 +43,45 @@ void SimulationManager::run()
     Vec2 top_left, bottom_right;
     particle_manager->get_particle_area(top_left, bottom_right);
 
-    tree = nullptr;
     std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
     tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, rectangles, true);
 
     std::chrono::high_resolution_clock::time_point start_time;
     while ( window->is_open() )
     {
-        /*
-        std::string filename = std::to_string(steps) + ".png";
-
-        while ( filename.size() < 7 )
-        {
-            filename = "0" + filename;
-        }
-        window->store_png("./images/dump/" + filename);
-        */
-
-        ++steps;
+        this->calculations_per_frame = 0;
+        elapsed_time_physics = 0;
 
         if ( !paused )
         {
+            ++steps;
+
             start_time = std::chrono::high_resolution_clock::now();
-            update_simulation(calculations_per_frame);
-            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+            update_simulation();
 
-            total_calculations += calculations_per_frame;
-
-            if ( debug ) print_debug_info();
-            calculations_per_frame = 0;
+            elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::high_resolution_clock::now() - start_time).count();
+            this->total_calculations += calculations_per_frame;
         }
 
         start_time = std::chrono::high_resolution_clock::now();
         window->update();
+
         elapsed_time_graphics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
         total_frame_time = elapsed_time_physics + elapsed_time_graphics;
     }
 }
 
-// TODO - remove the print statements
-void SimulationManager::update_simulation(unsigned long& calculations_per_frame)
+void SimulationManager::add_bodies(unsigned count, double mass, BodyType body_type)
+{
+    particle_manager->add_bodies(body_type, count, mass);
+}
+
+void SimulationManager::update_simulation()
 {
     Vec2 top_left, bottom_right; // the square that contains all particles
     particle_manager->get_particle_area(top_left, bottom_right);
 
-    tree = nullptr;
     std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
     tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, rectangles, true);
 
@@ -124,6 +97,11 @@ void SimulationManager::print_debug_info()
     std::cout << get_debug_info();
 }
 
+void SimulationManager::print_start_info()
+{
+    std::cout << get_start_info();
+}
+
 std::string SimulationManager::get_debug_info()
 {
     std::stringstream ss;
@@ -131,25 +109,49 @@ std::string SimulationManager::get_debug_info()
     double current_ratio_worst = bodies->get_size() * bodies->get_size() / this->calculations_per_frame;
     double current_ratio_best = bodies->get_size() * log2(bodies->get_size()) / this->calculations_per_frame;
 
+    ss << std::left << "|--- STEP: " << this->steps << std::endl;
 
-    ss << std::left << std::setw(21) << "|--- STEP: " << this->steps << std::endl;
+    ss << std::left << "| particles: " << this->bodies->get_size() << std::endl;
+    ss << std::left << "|-" << std::endl;
 
-    ss << std::left << std::setw(21) << "| particles: " << this->bodies->get_size() << std::endl;
-    ss << std::left << "|" << std::endl;
+    ss << std::left << "| physics time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
+    ss << std::left << "| drawing time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
+    ss << std::left << "| frame time: " << this->total_frame_time / 1000 << " ms" << std::endl;
+    ss << std::left << "|-" << std::endl;
 
-    ss << std::left << std::setw(21) << "| phys time: " << this->elapsed_time_physics / 1000 << " ms" << std::endl;
-    ss << std::left << std::setw(21) << "| graph time: " << this->elapsed_time_graphics / 1000 << " ms" << std::endl;
-    ss << std::left << std::setw(21) << "| total time: " << this->total_frame_time / 1000 << " ms" << std::endl;
-    ss << std::left << "|" << std::endl;
+    ss << std::left << "| fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl;
+    ss << std::left << "|-" << std::endl;
 
-    ss << std::left << std::setw(21) << "| fps: " << std::fixed << std::setprecision(3) << 1e6 * 1.0 / this->total_frame_time << std::endl;
-    ss << std::left << "|" << std::endl;
-
-    ss << std::left << std::setw(21) << "| calc per frame: " << this->calculations_per_frame << std::endl;
-    ss << std::left << std::setw(21) << "| total calc: " << this->total_calculations << std::endl << std::endl;
+    ss << std::left << "| interactions per frame: " << std::scientific << this->calculations_per_frame << std::endl;
+    ss << std::left << "| total interactions: " << this->total_calculations << std::endl << std::endl;
 
     return ss.str();
 }
+
+std::string SimulationManager::get_start_info()
+{
+    std::stringstream ss;
+
+    ss << "|           N-Body Simulation           |" << std::endl << std::endl;
+
+
+    ss << "|  Number of bodies:     " << bodies->get_size() << std::endl;
+    ss << "|  G:                                     " << std::scientific << std::setprecision(4) << G << std::endl;
+    ss << "|  Theta:                             " << std::scientific << theta << std::endl;
+    ss << "|  dt:                                    " << dt << std::endl << std::endl;
+
+    ss << "|  'space'  | 'q'       | 'v'  | 'd'   | 'esc' |" << std::endl;
+    ss << "|  pause    | quad | vect | debug | exit  |" << std::endl << std::endl;
+
+    ss << "|  'left'  | 'right' |  'up'  | 'down' |" << std::endl;
+    ss << "|  dt -    |  dt +   |   G -  |   G +  |" << std::endl;
+
+
+    ss << "|          Press SPACE to start         |" << std::endl << std::endl;
+
+    return ss.str();
+}
+
 
 // ====================================
 // functions to draw fourteen segment display letters

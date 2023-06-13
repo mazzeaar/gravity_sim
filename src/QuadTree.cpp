@@ -87,14 +87,34 @@ QuadTree::~QuadTree()
 
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    const unsigned num_threads = std::thread::hardware_concurrency();
+    std::vector<std::thread> threads(num_threads);
+
+    const unsigned chunk_size = (bodies->get_size() + num_threads - 1) / num_threads;
+
+    for ( unsigned t = 0; t < num_threads; ++t )
     {
-        compute_force(i, theta, G, calculations_per_frame);
+        threads[t] = std::thread([&, t]()
+            {
+                const unsigned start = t * chunk_size;
+                const unsigned end = std::min((t + 1) * chunk_size, bodies->get_size());
+
+                for ( unsigned j = start; j < end; ++j )
+                {
+                    compute_force(j, theta, G, calculations_per_frame);
+                }
+            });
+    }
+
+    for ( auto& thread : threads )
+    {
+        thread.join();
     }
 
     bodies->remove_merged_bodies();
     bodies->update(dt);
 }
+
 
 /*----------------------------------------
 |             private methods            |
@@ -181,6 +201,8 @@ void QuadTree::insert(unsigned index)
         {
             //bodies->merge_bodies(this->body_index, index); // removes a lot of bodies
             // this->body_index = index;
+
+            // both bodies loose a bit of velocity and a bit acc
             return;
         }
     }

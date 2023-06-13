@@ -4,6 +4,7 @@
 #include "Vec2.h"
 #include <iostream>
 #include <vector>
+#include <utility>
 
 class Bodies {
 public:
@@ -14,32 +15,32 @@ public:
     std::vector<double> mass;
     std::vector<double> radius;
 
-    double lowest_density;
-    double highest_density;
-
     std::vector<bool> to_be_deleted;
 
     unsigned size;
+    unsigned width, height;
 
-    // Constructor that resizes the vectors to hold a specific number of bodies
     Bodies(unsigned num_bodies);
-
-    void add_force(unsigned index, const Vec2& force);
-
-    void reset_force(unsigned index);
+    inline void set_size(unsigned width, unsigned height)
+    {
+        width = width;
+        height = height;
+    }
 
     void update(double dt);
-
     void resize(unsigned num_bodies);
 
     void remove_merged_bodies();
-
     void merge_bodies(unsigned keep_index, unsigned remove_index);
 
-    unsigned get_size();
+    double get_lowest_density() const;
+    double get_highest_density() const;
+    unsigned get_size() const;
+
+    void add_force(unsigned index, const Vec2& force);
+    void reset_force(unsigned index);
 
     void print() const;
-
     void print(unsigned index) const;
 };
 

@@ -3,6 +3,8 @@
 
 #include "Bodies.h"
 
+#include <random>
+
 enum BodyType {
     SPINNING_CIRCLE,
     GALAXY,

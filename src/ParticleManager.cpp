@@ -74,6 +74,18 @@ void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
             bottom_right.y = bodies->pos[i].y;
         }
     }
+
+    double width = bottom_right.x - top_left.x;
+    double height = bottom_right.y - top_left.y;
+
+    if ( width > height )
+    {
+        bottom_right.y = top_left.y + width;
+    }
+    else
+    {
+        bottom_right.x = top_left.x + height;
+    }
 }
 
 /*----------------------------------------
@@ -188,17 +200,27 @@ void ParticleManager::add_rotating_cubes(unsigned count, double mass)
 
 void ParticleManager::add_random(unsigned count, double mass)
 {
+    // add random bodies, 1/ 10th of the width and height away from the edges
+    // use gaussian distribution for the particles
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<> d(0, 1);
+
     for ( unsigned i = 0; i < count; ++i )
     {
         bodies->mass[i] = mass;
         bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
 
-        double x = rand() % width;
-        double y = rand() % height;
+        double x = width / 2.0 + width / 10.0 * d(gen);
+        double y = height / 2.0 + height / 10.0 * d(gen);
 
         bodies->pos[i] = Vec2(x, y);
 
-        bodies->vel[i] = Vec2(0.0, 0.0);
+        double vx = 0.3 * d(gen);
+        double vy = 0.3 * d(gen);
+
+        bodies->vel[i] = Vec2(vx, vy);
     }
 }
 

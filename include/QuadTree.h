@@ -8,7 +8,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <stack>
-
+#include <thread>
 
 class QuadTree {
 private:
