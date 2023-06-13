@@ -1,26 +1,53 @@
 #include "SimulationManager.h"
 #include "Window.h"
 
-/*----------------------------------------
-|             Simulation Config          |
-+----------------------------------------+
-| TODO: make this a config file!!!       |
------------------------------------------*/
+#include <fstream>
 
-const double G = 6.67408e-2; // 10e8 stronger gravity
-const double theta = 1.4;
-const double dt = 0.1;
+void readConfig(const std::string& configFile, double& G, double& theta, double& dt, unsigned& body_count, double& mass, int& height, int& width)
+{
+    std::ifstream file(configFile);
+    std::string line;
 
-const unsigned body_count = 69420;
-const double mass = 10;
+    while ( std::getline(file, line) )
+    {
+        if ( line.empty() || line[0] == '#' )
+            continue;
 
-const int height = 2200;
-const int width = 2200;
+        size_t delimiterPos = line.find('=');
+        if ( delimiterPos != std::string::npos )
+        {
+            std::string key = line.substr(0, delimiterPos);
+            std::string value = line.substr(delimiterPos + 1);
 
-/*----------------------------------------*/
+            if ( key == "G" )
+                G = std::stod(value);
+            else if ( key == "theta" )
+                theta = std::stod(value);
+            else if ( key == "dt" )
+                dt = std::stod(value);
+            else if ( key == "body_count" )
+                body_count = std::stoul(value);
+            else if ( key == "mass" )
+                mass = std::stod(value);
+            else if ( key == "height" )
+                height = std::stoi(value);
+            else if ( key == "width" )
+                width = std::stoi(value);
+        }
+    }
+}
 
 int main()
 {
+    double G = 6.67408e-11; // 10e8 stronger gravity
+    double theta = 0.5;
+    double dt = 0.05;
+    unsigned body_count = 50000;
+    double mass = 10;
+    int height = 2200;
+    int width = 2200;
+
+    readConfig("../CONFIG.cfg", G, theta, dt, body_count, mass, height, width);
     SimulationManager* simulation_manager = new SimulationManager(width, height, "N-Body Simulation", G, theta, dt);
 
     simulation_manager->add_bodies(body_count, mass, BodyType::SPINNING_CIRCLE);

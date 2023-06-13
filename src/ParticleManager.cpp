@@ -205,15 +205,15 @@ void ParticleManager::add_random(unsigned count, double mass)
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<> d(0, 1);
+    std::poisson_distribution<> d(1.0);
 
     for ( unsigned i = 0; i < count; ++i )
     {
         bodies->mass[i] = mass;
         bodies->radius[i] = std::pow(bodies->mass[i], 1.0 / 3.0);
 
-        double x = width / 2.0 + width / 10.0 * d(gen);
-        double y = height / 2.0 + height / 10.0 * d(gen);
+        double x = width / 2.0 + (static_cast<double>(rand()) / RAND_MAX - 0.5) * 6.0 * width / 7.0;
+        double y = height / 2.0 + (static_cast<double>(rand()) / RAND_MAX - 0.5) * 6.0 * height / 7.0;
 
         bodies->pos[i] = Vec2(x, y);
 
