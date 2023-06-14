@@ -48,6 +48,8 @@ public:
 
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
     inline sf::VertexArray* get_bounding_rectangles() const { return rectangles.get(); }
+    inline Vec2 get_center_of_mass() const { return center_of_mass; }
+    inline void get_size(Vec2& top_left, Vec2& bottom_right) const { top_left = this->top_left; bottom_right = this->bottom_right; }
 };
 
 #endif // QUADTREE_H

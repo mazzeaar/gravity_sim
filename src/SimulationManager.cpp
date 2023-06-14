@@ -69,6 +69,50 @@ void SimulationManager::run()
     }
 }
 
+/*
+tried multithreading, sadly this code is slower than the single threaded version
+it also had some issues with stats (var was not atomic), but too lazy to fix it
+void SimulationManager::run()
+{
+    std::chrono::high_resolution_clock::time_point start_time;
+
+    Vec2 top_left, bottom_right;
+    particle_manager->get_particle_area(top_left, bottom_right);
+
+    std::atomic<bool> stopSimulation(false);
+
+    // sim update thread
+    std::thread simulationThread([&]() {
+        while (!stopSimulation) {
+            calculations_per_frame = 0;
+            elapsed_time_physics = 0;
+
+            if (!paused) {
+                ++steps;
+
+                start_time = std::chrono::high_resolution_clock::now();
+                update_simulation();
+
+                elapsed_time_physics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+                total_calculations += calculations_per_frame;
+            }
+        }
+    });
+
+    // window update in main thread
+    while (window->is_open()) {
+        start_time = std::chrono::high_resolution_clock::now();
+        window->update();
+        elapsed_time_graphics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
+        total_frame_time = elapsed_time_physics + elapsed_time_graphics;
+    }
+
+    stopSimulation = true;
+    simulationThread.join();
+}
+*/
+
+
 void SimulationManager::update_simulation()
 {
     Vec2 top_left, bottom_right;

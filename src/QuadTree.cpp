@@ -23,7 +23,6 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
     {
         for ( unsigned i = 0; i < bodies->get_size(); ++i )
         {
-            bodies->acc[i] = Vec2(0, 0);
             this->insert(i);
         }
     }
@@ -123,6 +122,7 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
 
                 for ( unsigned j = start; j < end; ++j )
                 {
+                    this->bodies->acc[j] = Vec2(0, 0);
                     compute_force(j, theta, G, calculations_per_frame);
                 }
             });

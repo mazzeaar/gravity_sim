@@ -91,6 +91,17 @@ public:
     inline void increase_dt() { this->dt += 0.05; }
     inline void decrease_dt() { this->dt = std::max(0.05, this->dt - 0.05); }
 
+    inline Vec2 get_center_of_mass() const { return tree->get_center_of_mass(); }
+    inline void get_quadtree_size(double& x, double& y, double& width, double& height) const
+    {
+        Vec2 top_left, bottom_right;
+        tree->get_size(top_left, bottom_right);
+        x = top_left.x;
+        y = top_left.y;
+        width = bottom_right.x - top_left.x;
+        height = bottom_right.y - top_left.y;
+    }
+
     /*--------------------
     | Simulation Toggles |
     ---------------------*/

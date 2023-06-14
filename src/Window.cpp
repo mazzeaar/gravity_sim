@@ -10,20 +10,24 @@ Window::Window(int width, int height, const char* title, std::shared_ptr<Simulat
     this->simulation_manager = simulation_manager;
     this->bodies = this->simulation_manager->get_bodies();
 
-    font = sf::Font();
-    font.loadFromFile("assets/fonts/montserrat/Montserrat-Regular.otf");
+    this->toggle_tracking = true;
+    this->isDragging = false;
+    this->zoomFactor = 1.0;
 
-    std::cout << bodies->get_size() << std::endl;
-
+    // WINDOW
     window = new sf::RenderWindow(sf::VideoMode(width, height), title);
+
     window->setPosition(sf::Vector2i(0, 0));
-    window->setFramerateLimit(0);
+    window->setFramerateLimit(120);
     window->setVerticalSyncEnabled(true);
 
+    // VIEWS
     view = new sf::View(sf::FloatRect(0, 0, width, height));
-    window->setView(*view);
+    ui_view = new sf::View(sf::FloatRect(0, 0, width, height));
 
-    window->display();
+    // FONT
+    font = sf::Font();
+    font.loadFromFile("assets/fonts/montserrat/Montserrat-Regular.otf");
 }
 
 Window::~Window()
@@ -38,24 +42,16 @@ Window::~Window()
 void Window::update()
 {
     window->clear();
+    window->setView(*view);
+
     handle_events();
-    draw_bodies();
 
-    if ( simulation_manager->get_toggle_draw_vectors() )
+    if ( toggle_tracking )
     {
-        draw_velocity_vectors();
+        reset_view();
     }
 
-    if ( simulation_manager->get_toggle_draw_quadtree() )
-    {
-        draw_quadtree_bounds();
-    }
-
-    if ( simulation_manager->get_toggle_debug() )
-    {
-        draw_debug();
-    }
-
+    draw_everything();
     window->display();
 }
 
@@ -81,6 +77,26 @@ bool Window::is_open()
 /*--------------------
 |    draw methods    |
 ---------------------*/
+
+void Window::draw_everything()
+{
+    draw_bodies();
+
+    if ( simulation_manager->get_toggle_draw_vectors() )
+    {
+        draw_velocity_vectors();
+    }
+
+    if ( simulation_manager->get_toggle_draw_quadtree() )
+    {
+        draw_quadtree_bounds();
+    }
+
+    if ( simulation_manager->get_toggle_debug() )
+    {
+        draw_ui();
+    }
+}
 
 void Window::draw_bodies()
 {
@@ -124,17 +140,15 @@ void Window::draw_bodies()
         sf::Color color = interpolateColor(normalized_density);
 
         sf::Vertex vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y), color);
-
         vertices.append(vertex);
     }
 
     window->draw(vertices);
-    vertices.clear();
 }
 
 void Window::draw_velocity_vectors()
 {
-    const double lineLengthMultiplier = 1.5;
+    const double lineLengthMultiplier = 1.0;
 
     sf::VertexArray lines(sf::Lines);
     lines.resize(bodies->get_size() * 2);
@@ -159,8 +173,8 @@ void Window::draw_velocity_vectors()
             bodies->pos[i].y + sinValues[i] * length
         );
 
-        lines.append(sf::Vertex(startPos, sf::Color(255, 255, 255, 76)));
-        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 76)));
+        lines.append(sf::Vertex(startPos, sf::Color(255, 255, 255, 150)));
+        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 150)));
     }
 
     window->draw(lines);
@@ -178,8 +192,10 @@ void Window::draw_quadtree_bounds()
     window->draw(*lines);
 }
 
-void Window::draw_debug()
+void Window::draw_ui()
 {
+    window->setView(*ui_view);
+
     unsigned left_offset = 20;
     unsigned top_offset = 20;
     unsigned spacing = 20;
@@ -243,8 +259,8 @@ void Window::draw_debug()
         << simulation_manager->get_total_frame_time() << " ms\n\n"
         << std::setprecision(2) << std::scientific << static_cast<double>(simulation_manager->get_interactions_per_frame()) << "\n"
         << std::setprecision(2) << std::scientific << static_cast<double>(simulation_manager->get_total_interactions()) << "\n\n" << std::fixed
-        << std::setprecision(2) << simulation_manager->get_current_ratio_worst_case() << "x     (~" << simulation_manager->get_average_ratio_worst_case() << ")\n"
-        << std::setprecision(2) << simulation_manager->get_current_ratio_best_case() << "x     (~" << simulation_manager->get_average_ratio_best_case() << ")\n";
+        << std::setprecision(2) << simulation_manager->get_current_ratio_best_case() << "x     (~" << simulation_manager->get_average_ratio_best_case() << ")\n"
+        << std::setprecision(2) << simulation_manager->get_current_ratio_worst_case() << "x     (~" << simulation_manager->get_average_ratio_worst_case() << ")\n";
 
     values.setString(valueStream.str());
 
@@ -254,7 +270,7 @@ void Window::draw_debug()
     toggleText.setCharacterSize(20);
     toggleText.setOutlineColor(sf::Color::Black);
     toggleText.setFillColor(sf::Color::White);
-    toggleText.setString("DRAW QUADTREE:\nDRAW VECTORS:\n");
+    toggleText.setString("DRAW QUADTREE:\nDRAW VECTORS:\nTRACKING:\n");
 
     sf::Text toggleQuadtree;
     toggleQuadtree.setPosition(left_offset + names.getLocalBounds().width + spacing, toggleText.getPosition().y);
@@ -272,6 +288,14 @@ void Window::draw_debug()
     toggleVectors.setFillColor(toggleDrawVectors ? sf::Color::Green : sf::Color::Red);
     toggleVectors.setString(toggleDrawVectors ? "TRUE" : "FALSE");
 
+    sf::Text toggleTracking;
+    toggleTracking.setPosition(left_offset + names.getLocalBounds().width + spacing, toggleVectors.getPosition().y + toggleVectors.getLocalBounds().height + 8);
+    toggleTracking.setFont(font);
+    toggleTracking.setCharacterSize(20);
+    toggleTracking.setOutlineColor(sf::Color::Black);
+    toggleTracking.setFillColor(this->toggle_tracking ? sf::Color::Green : sf::Color::Red);
+    toggleTracking.setString(this->toggle_tracking ? "TRUE" : "FALSE");
+
     // Combine similar draw operations
     window->draw(statusText);
     window->draw(names);
@@ -279,6 +303,9 @@ void Window::draw_debug()
     window->draw(toggleText);
     window->draw(toggleQuadtree);
     window->draw(toggleVectors);
+    window->draw(toggleTracking);
+
+    window->setView(*view);
 }
 
 
@@ -300,6 +327,22 @@ void Window::handle_events()
         {
             settings_events(event);
         }
+        else if ( event.type == sf::Event::MouseWheelScrolled )
+        {
+            handle_mouse_wheel(event.mouseWheelScroll);
+        }
+        else if ( event.type == sf::Event::MouseButtonPressed )
+        {
+            handle_mouse_press(event.mouseButton);
+        }
+        else if ( event.type == sf::Event::MouseButtonReleased )
+        {
+            handle_mouse_release(event.mouseButton);
+        }
+        else if ( event.type == sf::Event::MouseMoved )
+        {
+            handle_mouse_move(event.mouseMove);
+        }
     }
 }
 
@@ -308,58 +351,121 @@ void Window::settings_events(sf::Event& event)
     if ( event.key.code == sf::Keyboard::Escape )
     {
         this->window->close();
-        std::cout << "closing window" << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::Space )
     {
         simulation_manager->toggle_pause();
-        std::cout << "toggle_pause = " << simulation_manager->get_toggle_paused() << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::Q )
     {
         simulation_manager->toggle_draw_quadtree();
-        std::cout << "toggle_draw_quadtree = " << simulation_manager->get_toggle_draw_quadtree() << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::V )
     {
         simulation_manager->toggle_draw_vectors();
-        std::cout << "toggle_draw_vectors = " << simulation_manager->get_toggle_draw_vectors() << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::D )
     {
         simulation_manager->toggle_debug_info();
-        std::cout << "toggle_debug = " << simulation_manager->get_toggle_debug() << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::Right )
     {
         simulation_manager->increase_dt();
-        std::cout << "increased dt to " << simulation_manager->get_dt() << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::Left )
     {
         simulation_manager->decrease_dt();
-        std::cout << "decreased dt to " << simulation_manager->get_dt() << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::Up )
     {
         simulation_manager->increase_G();
-        std::cout << "increased G to " << simulation_manager->get_G() << std::endl;
     }
 
     else if ( event.key.code == sf::Keyboard::Down )
     {
         simulation_manager->decrease_G();
-        std::cout << "decreased G to " << simulation_manager->get_G() << std::endl;
+    }
+
+    else if ( event.key.code == sf::Keyboard::Enter )
+    {
+        this->view->setCenter(sf::Vector2f(this->width / 2.0, this->height / 2.0));
+
+        this->zoomFactor = 1.0;
+        this->isDragging = false;
+        this->lastMousePos = sf::Vector2i(0, 0);
+    }
+
+    else if ( event.key.code == sf::Keyboard::T )
+    {
+        this->toggle_tracking = !this->toggle_tracking;
     }
 }
 
+void Window::handle_mouse_wheel(const sf::Event::MouseWheelScrollEvent& event)
+{
+    toggle_tracking = false;
+
+    if ( event.delta > 0 )
+    {
+        zoomFactor *= 0.9;
+    }
+    else if ( event.delta < 0 )
+    {
+        zoomFactor *= 1.1;
+    }
+
+    view->setSize(sf::Vector2f(width / zoomFactor, height / zoomFactor));
+    window->setView(*view);
+}
+
+void Window::handle_mouse_press(const sf::Event::MouseButtonEvent& event)
+{
+    toggle_tracking = false;
+    if ( event.button == sf::Mouse::Left )
+    {
+        isDragging = true;
+        lastMousePos = sf::Vector2i(event.x, event.y);
+    }
+}
+
+void Window::handle_mouse_release(const sf::Event::MouseButtonEvent& event)
+{
+    toggle_tracking = false;
+    if ( event.button == sf::Mouse::Left )
+    {
+        isDragging = false;
+    }
+}
+
+void Window::handle_mouse_move(const sf::Event::MouseMoveEvent& event)
+{
+    if ( isDragging )
+    {
+        sf::Vector2i mousePos(event.x, event.y);
+        sf::Vector2f delta = sf::Vector2f(lastMousePos - mousePos);
+
+        view->move(sf::Vector2f(delta.x / zoomFactor, delta.y / zoomFactor));
+        window->setView(*view);
+
+        lastMousePos = mousePos;
+    }
+}
+
+void Window::reset_view()
+{
+    view->setCenter(sf::Vector2f(simulation_manager->get_center_of_mass().x, simulation_manager->get_center_of_mass().y));
+
+    Vec2 top_left, bottom_right;
+    simulation_manager->get_quadtree_size(top_left.x, top_left.y, bottom_right.x, bottom_right.y);
+    view->setSize(sf::Vector2f(bottom_right.x * 1.6, bottom_right.y * 1.6));
+}
 
 /*----------------------------------------
 |              old methods               |
