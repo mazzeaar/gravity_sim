@@ -10,7 +10,7 @@ enum BodyType {
     GALAXY,
     ROTATING_CUBES,
     RANDOM,
-    LISA
+    LARGE_CUBE
 };
 
 class ParticleManager {
@@ -22,7 +22,7 @@ private:
     void add_galaxy(unsigned num_bodies, double mass);
     void add_rotating_cubes(unsigned num_bodies, double mass);
     void add_random(unsigned num_bodies, double mass);
-    void add_lisa(unsigned num_bodies, double mass);
+    void add_large_cube(unsigned num_bodies, double mass);
 
 public:
     ParticleManager(std::shared_ptr<Bodies> bodies, unsigned width, unsigned height);

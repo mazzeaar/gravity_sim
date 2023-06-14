@@ -13,6 +13,12 @@ class Window {
 private:
     sf::RenderWindow* window;
     sf::View* view;
+    sf::View* ui_view;
+
+    double zoomFactor;
+    bool isDragging;
+    bool toggle_tracking;
+    sf::Vector2i lastMousePos;
 
     sf::Font font;
 
@@ -23,13 +29,20 @@ private:
 
     int width, height;
 
+    void draw_everything();
     void draw_bodies();
     void draw_velocity_vectors();
     void draw_quadtree_bounds();
-    void draw_start_screen();
+    void draw_ui();
 
     void handle_events();
-    void draw_debug();
+    void settings_events(sf::Event& event);
+    void handle_mouse_wheel(const sf::Event::MouseWheelScrollEvent& event);
+    void handle_mouse_press(const sf::Event::MouseButtonEvent& event);
+    void handle_mouse_release(const sf::Event::MouseButtonEvent& event);
+    void handle_mouse_move(const sf::Event::MouseMoveEvent& event);
+
+    void reset_view();
 
     void store_png(const std::string& filename);
 
@@ -41,7 +54,6 @@ public:
     void update();
 
     bool is_open();
-
     int get_width();
     int get_height();
 };

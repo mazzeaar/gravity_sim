@@ -23,49 +23,60 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
     {
         for ( unsigned i = 0; i < bodies->get_size(); ++i )
         {
-            bodies->acc[i] = Vec2(0, 0);
             this->insert(i);
         }
     }
 
-    if ( rectangles == nullptr )
-    {
-        rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 5);
-    }
-
     sf::Vertex vertex;
+    color = sf::Color::Green;
+    color.a = 120;
 
-    vertex.position = sf::Vector2f(top_left.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+    if ( root )
+    {
+        if ( rectangles == nullptr )
+        {
+            rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 8);  // Update the vertex array size
+        }
 
-    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        // Draw the largest rectangle for the root
+        sf::Vertex vertex;
+        vertex.position = sf::Vector2f(top_left.x, top_left.y);
+        vertex.color = color;
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(top_left.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f(top_left.x, top_left.y);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
+        rectangles->append(vertex);
+    }
 }
 
 QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax, std::shared_ptr<sf::VertexArray> rectangles, bool root) :
@@ -85,6 +96,23 @@ QuadTree::~QuadTree()
 |             public methods             |
 -----------------------------------------*/
 
+// just a test
+void applyTidalForces(const std::shared_ptr<Bodies>& bodies, const Vec2& centralBodyPosition, double tidalCoefficient)
+{
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        Vec2 position = bodies->pos[i];
+        Vec2 direction = centralBodyPosition - position;
+        double distance = direction.length();
+
+        // Calculate the tidal force magnitude based on the gravitational gradient
+        double tidalForceMagnitude = tidalCoefficient * distance;
+
+        // Apply the tidal force to the particle
+        bodies->add_force(i, direction.normalize() * tidalForceMagnitude);
+    }
+}
+
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
     const unsigned num_threads = std::thread::hardware_concurrency();
@@ -101,6 +129,7 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
 
                 for ( unsigned j = start; j < end; ++j )
                 {
+                    this->bodies->acc[j] = Vec2(0, 0);
                     compute_force(j, theta, G, calculations_per_frame);
                 }
             });
@@ -112,6 +141,10 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
     }
 
     bodies->remove_merged_bodies();
+
+    // just a test
+    applyTidalForces(bodies, this->center_of_mass, 0.01);
+
     bodies->update(dt);
 }
 
@@ -136,6 +169,21 @@ bool QuadTree::subdivide()
         return false;
     }
 
+    sf::Vertex vertex;
+
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
+    vertex.color = color;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
+    rectangles->append(vertex);
+
     this->NW = std::make_unique<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0, rectangles, false);
     this->NE = std::make_unique<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0), rectangles, false);
     this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y), rectangles, false);
@@ -151,7 +199,7 @@ bool QuadTree::subdivide()
 
 void QuadTree::insert(unsigned index)
 {
-    if ( this->mass == 0 )
+    if ( this->mass == 0 && this->body_index == -1 )
     {
         this->body_index = index;
         this->mass = bodies->mass[index];

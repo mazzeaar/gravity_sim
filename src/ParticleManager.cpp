@@ -36,9 +36,8 @@ void ParticleManager::add_bodies(BodyType type, unsigned num_bodies, double mass
     case BodyType::RANDOM:
         add_random(num_bodies, mass);
         break;
-    case BodyType::LISA:
-        add_lisa(num_bodies, mass);
-        break;
+    case BodyType::LARGE_CUBE:
+        add_large_cube(num_bodies, mass);
     default:
         std::cout << "Error: Invalid body type" << std::endl;
         break;
@@ -79,23 +78,19 @@ void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
     double width = bottom_right.x - top_left.x;
     double height = bottom_right.y - top_left.y;
 
+    double offset = std::abs(width - height) / 2.0;
+
     if ( width > height )
     {
-        double offset = (width - height) / 2.0;
-        bottom_right.y = top_left.y + width;
-        top_left.y -= offset;
         bottom_right.y += offset;
+        top_left.y -= offset;
     }
     else
     {
-        double offset = (height - width) / 2.0;
-        bottom_right.x = top_left.x + height;
-        top_left.x -= offset;
         bottom_right.x += offset;
+        top_left.x -= offset;
     }
 }
-
-
 
 /*----------------------------------------
 |            private methods             |
@@ -238,7 +233,29 @@ void ParticleManager::add_random(unsigned count, double mass)
     }
 }
 
-void ParticleManager::add_lisa(unsigned count, double mass)
+void ParticleManager::add_large_cube(unsigned count, double mass)
 {
-    std::cout << "not implemented yet:)" << std::endl;
+    this->width *= 5;
+    this->height *= 5;
+
+    double center_x = width / 2.0;
+    double center_y = height / 2.0;
+
+    double cubeSize = width;
+    double speed = 0.03;
+
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        bodies->mass[i] = mass;
+        bodies->radius[i] = 1.0;
+
+        double x = center_x + (static_cast<double>(rand()) / RAND_MAX - 0.5) * cubeSize;
+        double y = center_y + (static_cast<double>(rand()) / RAND_MAX - 0.5) * cubeSize;
+        bodies->pos[i] = Vec2(x, y);
+
+        Vec2 direction = (bodies->pos[i] - Vec2(center_x, center_y)).normalize();
+        Vec2 perpendicular = Vec2(-direction.y, direction.x);
+
+        bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(center_x, center_y)) * speed;
+    }
 }
