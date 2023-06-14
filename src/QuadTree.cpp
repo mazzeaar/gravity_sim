@@ -28,44 +28,49 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
         }
     }
 
-    if ( rectangles == nullptr )
-    {
-        rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 5);
-    }
-
     sf::Vertex vertex;
+    color = sf::Color::Green;
+    color.a = 120;
 
-    vertex.position = sf::Vector2f(top_left.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+    if ( root )
+    {
+        if ( rectangles == nullptr )
+        {
+            rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 5);
+        }
 
-    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(top_left.x, top_left.y);
+        vertex.color = color;
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+        vertex.color = color;
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+        vertex.color = color;
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+        vertex.color = color;
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+        vertex.color = color;
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+        vertex.color = color;
+        rectangles->append(vertex);
 
-    vertex.position = sf::Vector2f(top_left.x, top_left.y);
-    vertex.color = sf::Color::Green;
-    rectangles->append(vertex);
+        vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+        vertex.color = color;
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f(top_left.x, top_left.y);
+        vertex.color = color;
+        rectangles->append(vertex);
+    }
 }
 
 QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, double xmin, double ymin, double xmax, double ymax, std::shared_ptr<sf::VertexArray> rectangles, bool root) :
@@ -84,6 +89,23 @@ QuadTree::~QuadTree()
 /*----------------------------------------
 |             public methods             |
 -----------------------------------------*/
+
+// just a test
+void applyTidalForces(const std::shared_ptr<Bodies>& bodies, const Vec2& centralBodyPosition, double tidalCoefficient)
+{
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        Vec2 position = bodies->pos[i];
+        Vec2 direction = centralBodyPosition - position;
+        double distance = direction.length();
+
+        // Calculate the tidal force magnitude based on the gravitational gradient
+        double tidalForceMagnitude = tidalCoefficient * distance;
+
+        // Apply the tidal force to the particle
+        bodies->add_force(i, direction.normalize() * tidalForceMagnitude);
+    }
+}
 
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
@@ -112,6 +134,10 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
     }
 
     bodies->remove_merged_bodies();
+
+    // just a test
+    applyTidalForces(bodies, this->center_of_mass, 0.01);
+
     bodies->update(dt);
 }
 
@@ -145,6 +171,24 @@ bool QuadTree::subdivide()
     NE->depth = depth + 1;
     SW->depth = depth + 1;
     SE->depth = depth + 1;
+
+    // draw bounds for children
+    sf::Vertex vertex;
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
+    vertex.color = color;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
+    vertex.color = color;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
+    vertex.color = color;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
+    vertex.color = color;
+    rectangles->append(vertex);
 
     return true;
 }

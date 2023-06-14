@@ -14,9 +14,9 @@ class QuadTree {
 private:
     Vec2 top_left, bottom_right; //bounding box
 
-    Vec2 center_of_mass;
-    double mass;
-    unsigned depth;
+    Vec2 center_of_mass = Vec2(0, 0);
+    double mass = 0.0;
+    unsigned depth = 0;
 
     int body_index = -1;
 
@@ -24,6 +24,8 @@ private:
     std::unique_ptr<QuadTree> NE;
     std::unique_ptr<QuadTree> SW;
     std::unique_ptr<QuadTree> SE;
+
+    sf::Color color;
 
     std::shared_ptr<sf::VertexArray> rectangles;
 
@@ -45,7 +47,7 @@ public:
     ~QuadTree();
 
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
-    sf::VertexArray* get_bounding_rectangles() const { return rectangles.get(); }
+    inline sf::VertexArray* get_bounding_rectangles() const { return rectangles.get(); }
 };
 
 #endif // QUADTREE_H

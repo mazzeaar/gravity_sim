@@ -26,10 +26,10 @@ private:
     void draw_bodies();
     void draw_velocity_vectors();
     void draw_quadtree_bounds();
-    void draw_start_screen();
+    void draw_debug();
 
     void handle_events();
-    void draw_debug();
+    void settings_events(sf::Event& event);
 
     void store_png(const std::string& filename);
 
@@ -41,7 +41,6 @@ public:
     void update();
 
     bool is_open();
-
     int get_width();
     int get_height();
 };

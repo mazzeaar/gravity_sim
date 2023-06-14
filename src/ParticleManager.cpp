@@ -79,23 +79,19 @@ void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
     double width = bottom_right.x - top_left.x;
     double height = bottom_right.y - top_left.y;
 
+    double offset = std::abs(width - height) / 2.0;
+
     if ( width > height )
     {
-        double offset = (width - height) / 2.0;
-        bottom_right.y = top_left.y + width;
-        top_left.y -= offset;
         bottom_right.y += offset;
+        top_left.y -= offset;
     }
     else
     {
-        double offset = (height - width) / 2.0;
-        bottom_right.x = top_left.x + height;
-        top_left.x -= offset;
         bottom_right.x += offset;
+        top_left.x -= offset;
     }
 }
-
-
 
 /*----------------------------------------
 |            private methods             |
