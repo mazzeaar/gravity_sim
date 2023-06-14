@@ -35,39 +35,46 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
     {
         if ( rectangles == nullptr )
         {
-            rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 5);
+            rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 8);  // Update the vertex array size
         }
 
+        // Draw the largest rectangle for the root
+        sf::Vertex vertex;
         vertex.position = sf::Vector2f(top_left.x, top_left.y);
         vertex.color = color;
         rectangles->append(vertex);
 
         vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-        vertex.color = color;
         rectangles->append(vertex);
 
         vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-        vertex.color = color;
         rectangles->append(vertex);
 
         vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-        vertex.color = color;
         rectangles->append(vertex);
 
         vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-        vertex.color = color;
         rectangles->append(vertex);
 
         vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-        vertex.color = color;
         rectangles->append(vertex);
 
         vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-        vertex.color = color;
         rectangles->append(vertex);
 
         vertex.position = sf::Vector2f(top_left.x, top_left.y);
-        vertex.color = color;
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
+        rectangles->append(vertex);
+
+        vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
         rectangles->append(vertex);
     }
 }
@@ -162,6 +169,21 @@ bool QuadTree::subdivide()
         return false;
     }
 
+    sf::Vertex vertex;
+
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
+    vertex.color = color;
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
+    rectangles->append(vertex);
+
     this->NW = std::make_unique<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0, rectangles, false);
     this->NE = std::make_unique<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0), rectangles, false);
     this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y), rectangles, false);
@@ -172,30 +194,12 @@ bool QuadTree::subdivide()
     SW->depth = depth + 1;
     SE->depth = depth + 1;
 
-    // draw bounds for children
-    sf::Vertex vertex;
-    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
-    vertex.color = color;
-    rectangles->append(vertex);
-
-    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
-    vertex.color = color;
-    rectangles->append(vertex);
-
-    vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
-    vertex.color = color;
-    rectangles->append(vertex);
-
-    vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
-    vertex.color = color;
-    rectangles->append(vertex);
-
     return true;
 }
 
 void QuadTree::insert(unsigned index)
 {
-    if ( this->mass == 0 )
+    if ( this->mass == 0 && this->body_index == -1 )
     {
         this->body_index = index;
         this->mass = bodies->mass[index];
