@@ -99,7 +99,7 @@ void Window::draw_everything()
 
 void Window::draw_bodies()
 {
-    double interpolation_cutoff = 0.2;
+    double interpolation_cutoff = 0.5;
 
     sf::Color low_density_color = sf::Color(0, 128, 255);     // Light blue
     sf::Color mid_density_color = sf::Color(255, 0, 255);     // Magenta
@@ -130,17 +130,7 @@ void Window::draw_bodies()
     double highest_density = bodies->get_highest_density();
     double lowest_density = bodies->get_lowest_density();
 
-
-    double star_radius = 0.5;
-
-    sf::VertexArray stars(sf::Triangles);
-
-    sf::Vector2f top(0, -star_radius);
-    sf::Vector2f top_left(-star_radius * 0.5f, -star_radius * 0.5f);
-    sf::Vector2f top_right(star_radius * 0.5f, -star_radius * 0.5f);
-    sf::Vector2f bottom_left(-star_radius * 0.5f, star_radius * 0.5f);
-    sf::Vector2f bottom_right(star_radius * 0.5f, star_radius * 0.5f);
-    sf::Vector2f bottom(0, star_radius);
+    sf::VertexArray stars(sf::Points);
 
     for ( unsigned i = 0; i < bodies->get_size(); ++i )
     {
@@ -150,32 +140,9 @@ void Window::draw_bodies()
 
         sf::Vector2f position(bodies->pos[i].x, bodies->pos[i].y);
 
-        // triangle 1
-        stars.append(sf::Vertex(position + top, color));
-        stars.append(sf::Vertex(position + bottom_left, color));
-        stars.append(sf::Vertex(position + bottom_right, color));
-
-        // triangle 2
-        stars.append(sf::Vertex(position + bottom, color));
-        stars.append(sf::Vertex(position + top_left, color));
-        stars.append(sf::Vertex(position + top_right, color));
+        stars.append(sf::Vertex(position, color));
     }
 
-
-    /*
-     sf::VertexArray stars(sf::Points);
-
-     for ( unsigned i = 0; i < bodies->get_size(); ++i )
-     {
-         double normalized_density = (bodies->acc[i].length() - lowest_density) / (highest_density - lowest_density);
-
-         sf::Color color = interpolateColor(normalized_density);
-
-         sf::Vector2f position(bodies->pos[i].x, bodies->pos[i].y);
-
-         stars.append(sf::Vertex(position, color));
-     }
- */
     window->draw(stars);
 }
 

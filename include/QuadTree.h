@@ -8,6 +8,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <stack>
+#include <queue>
 #include <future>
 
 class QuadTree {
@@ -31,7 +32,10 @@ private:
     std::shared_ptr<sf::VertexArray> rectangles;
 
     void insert(unsigned index);
+    void reset_helper(std::vector<unsigned>& moved_bodies, Vec2 top_left, Vec2 bottom_right);
+
     bool subdivide();
+    QuadTree* get_child_quadrant(unsigned index);
 
     void add_subdivision_bounds();
     void add_root_bounds();
@@ -52,6 +56,8 @@ public:
     ~QuadTree();
 
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
+    void reset(Vec2 top_left, Vec2 bottom_right);
+
     inline sf::VertexArray* get_bounding_rectangles() const { return rectangles.get(); }
     inline Vec2 get_center_of_mass() const { return center_of_mass; }
     inline void get_size(Vec2& top_left, Vec2& bottom_right) const { top_left = this->top_left; bottom_right = this->bottom_right; }

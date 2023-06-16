@@ -71,8 +71,8 @@ void Bodies::update(double dt)
 {
     for ( unsigned i = 0; i < size; ++i )
     {
-        vel[i] = vel[i] + acc[i] * (0.5 * dt);
-        pos[i] = pos[i] + vel[i] * dt;
+        vel[i] += acc[i] * (0.5 * dt);
+        pos[i] += vel[i] * dt;
     }
 }
 

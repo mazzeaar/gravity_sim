@@ -23,12 +23,9 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
     {
         for ( unsigned i = 0; i < bodies->get_size(); ++i )
         {
-            this->insert(i);
+            insert(i);
         }
-    }
 
-    if ( root )
-    {
         if ( rectangles == nullptr )
         {
             rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 8);
@@ -90,13 +87,90 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
     calculations_per_frame = total_calculations;
 
     bodies->remove_merged_bodies();
-    bodies->update(dt);
 }
+
+void QuadTree::reset(Vec2 top_left, Vec2 bottom_right)
+{
+    this->top_left = top_left;
+    this->bottom_right = bottom_right;
+    this->rectangles->clear();
+
+    add_root_bounds();
+    add_subdivision_bounds();
+
+    std::vector<unsigned> moved_bodies;
+
+    reset_helper(moved_bodies, top_left, bottom_right);
+
+    for ( unsigned i = 0; i < moved_bodies.size(); ++i )
+    {
+        insert(moved_bodies[i]);
+    }
+
+    // Update the mass and center of mass of the root node
+    this->mass = this->NE->mass + this->NW->mass + this->SE->mass + this->SW->mass;
+    if ( this->mass == 0 )
+    {
+        this->center_of_mass = Vec2(0, 0);
+    }
+    else
+    {
+        this->center_of_mass = (this->NE->center_of_mass * this->NE->mass + this->NW->center_of_mass * this->NW->mass +
+            this->SE->center_of_mass * this->SE->mass + this->SW->center_of_mass * this->SW->mass) /
+            this->mass;
+    }
+}
+
 
 
 /*----------------------------------------
 |             private methods            |
 -----------------------------------------*/
+
+void QuadTree::reset_helper(std::vector<unsigned>& moved_bodies, Vec2 top_left, Vec2 bottom_right)
+{
+    this->top_left = top_left;
+    this->bottom_right = bottom_right;
+
+    if ( this->is_leaf() )
+    {
+        if ( this->body_index != -1 )
+        {
+            if ( this->contains(this->body_index) )
+            {
+                this->center_of_mass = bodies->pos[this->body_index];
+                this->mass = bodies->mass[this->body_index];
+            }
+            else
+            {
+                moved_bodies.push_back(this->body_index);
+                this->body_index = -1;
+            }
+        }
+        return;
+    }
+
+    Vec2 mid_point = (top_left + bottom_right) / 2.0;
+
+    this->NW->reset_helper(moved_bodies, top_left, mid_point);
+    this->NE->reset_helper(moved_bodies, Vec2(mid_point.x, top_left.y), Vec2(bottom_right.x, mid_point.y));
+    this->SW->reset_helper(moved_bodies, Vec2(top_left.x, mid_point.y), Vec2(mid_point.x, bottom_right.y));
+    this->SE->reset_helper(moved_bodies, mid_point, bottom_right);
+
+    // Aggregate mass and center of mass values from child nodes
+    this->mass = this->NE->mass + this->NW->mass + this->SE->mass + this->SW->mass;
+
+    if ( this->mass == 0 )
+    {
+        this->center_of_mass = Vec2(0, 0);
+    }
+    else
+    {
+        this->center_of_mass = (this->NE->center_of_mass * this->NE->mass + this->NW->center_of_mass * this->NW->mass +
+            this->SE->center_of_mass * this->SE->mass + this->SW->center_of_mass * this->SW->mass) /
+            this->mass;
+    }
+}
 
 bool QuadTree::contains(unsigned index) const
 {
@@ -108,12 +182,13 @@ bool QuadTree::contains(unsigned index) const
 
 bool QuadTree::subdivide()
 {
-    const double merge_threshold = 0.1;
-
+    /*
+    const double merge_threshold = 0.01;
     if ( bottom_right.x - top_left.x <= merge_threshold || bottom_right.y - top_left.y <= merge_threshold )
     {
         return false;
     }
+    */
 
     add_subdivision_bounds();
 
@@ -132,49 +207,78 @@ bool QuadTree::subdivide()
 
 void QuadTree::insert(unsigned index)
 {
-    if ( this->mass == 0 && this->body_index == -1 )
-    {
-        this->body_index = index;
-        this->mass = bodies->mass[index];
-        this->center_of_mass = bodies->pos[index];
+    QuadTree* current = this;
+    unsigned idx = index;
 
-        return;
-    }
+    std::stack<std::pair<QuadTree*, unsigned>> stack;
+    stack.push({ current, index });
 
-    this->center_of_mass = (this->center_of_mass * this->mass + bodies->pos[index] * bodies->mass[index]) / (this->mass + bodies->mass[index]);
-    this->mass += bodies->mass[index];
+    Vec2 adjusted_pos = bodies->pos[index] * bodies->mass[index];
 
-    if ( !this->is_leaf() )
+    while ( !stack.empty() )
     {
-        if ( this->NW->contains(index) ) this->NW->insert(index);
-        if ( this->NE->contains(index) ) this->NE->insert(index);
-        if ( this->SW->contains(index) ) this->SW->insert(index);
-        if ( this->SE->contains(index) ) this->SE->insert(index);
+        current = stack.top().first;
+        idx = stack.top().second;
+        stack.pop();
 
-        return;
-    }
-    else if ( this->body_index == -1 )
-    {
-        this->body_index = index;
-        return;
-    }
-    else
-    {
-        if ( this->subdivide() )
+        while ( !current->is_leaf() )
         {
-            unsigned old_index = this->body_index;
-            this->body_index = -1;
+            current->center_of_mass = ((current->center_of_mass * current->mass) + adjusted_pos) / (current->mass + bodies->mass[idx]);
+            current->mass += bodies->mass[idx];
 
-            this->insert(old_index);
-            this->insert(index);
+            current = current->get_child_quadrant(idx);
+
+            if ( current == nullptr )
+            {
+                std::cout << "THIS SHOULD NEVER HAPPEN:,)" << std::endl;
+                std::cout << "Error: Body not contained in any quadrant" << std::endl;
+                return;
+            }
+        }
+
+        if ( current->body_index == -1 )
+        {
+            current->center_of_mass = bodies->pos[idx];
+            current->mass = bodies->mass[idx];
+            current->body_index = idx;
             return;
         }
-        else
+
+        else if ( current->subdivide() )
         {
-            return;
+            stack.push({ current->get_child_quadrant(current->body_index), current->body_index });
+            stack.push({ current->get_child_quadrant(idx), idx });
+            current->body_index = -1;
         }
     }
 }
+
+QuadTree* QuadTree::get_child_quadrant(unsigned index)
+{
+    if ( this->NW->contains(index) )
+    {
+        return this->NW.get();
+    }
+    else if ( this->NE->contains(index) )
+    {
+        return this->NE.get();
+    }
+    else if ( this->SW->contains(index) )
+    {
+        return this->SW.get();
+    }
+    else if ( this->SE->contains(index) )
+    {
+        return this->SE.get();
+    }
+    else
+    {
+        std::cout << "THIS SHOULD NEVER HAPPEN:)" << std::endl;
+        std::cout << "Error: Body not contained in any quadrant" << std::endl;
+        return nullptr;
+    }
+}
+
 
 void QuadTree::compute_force_recursive(unsigned index, double theta_squared, double G, unsigned long& calculations_per_frame)
 {

@@ -38,6 +38,10 @@ void ParticleManager::add_bodies(BodyType type, unsigned num_bodies, double mass
         break;
     case BodyType::LARGE_CUBE:
         add_large_cube(num_bodies, mass);
+        break;
+    case BodyType::CUSTOM_SHAPE1:
+        add_custom_shape1(num_bodies, mass);
+        break;
     default:
         std::cout << "Error: Invalid body type" << std::endl;
         break;
@@ -122,7 +126,7 @@ void ParticleManager::add_galaxy(unsigned count, double mass)
 {
     double armCount = 5.0;       // Number of spiral arms
     double armTightness = -0.1;   // Tightness of the spiral arms
-    double armVelocity = -0.05;   // Orbital velocity of the arms
+    double armVelocity = -0.03;   // Orbital velocity of the arms
 
     double center_x = width / 2.0;
     double center_y = height / 2.0;
@@ -168,8 +172,8 @@ void ParticleManager::add_rotating_cubes(unsigned count, double mass)
     double center_bottom_right_x = width * 3.0 / 4.0;
     double center_bottom_right_y = height * 3.0 / 4.0;
 
-    double cubeSize = 800.0; // Size of the cubes
-    double speed = 0.04;     // Orbital speed of the cubes
+    double cubeSize = 800.0;
+    double speed = 0.02;
 
     for ( unsigned i = 0; i < bodies->get_size() / 2; ++i )
     {
@@ -199,6 +203,14 @@ void ParticleManager::add_rotating_cubes(unsigned count, double mass)
         Vec2 perpendicular = Vec2(-direction.y, direction.x);
 
         bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(center_bottom_right_x, center_bottom_right_y)) * speed;
+    }
+
+    for ( unsigned i = 0; i < bodies->get_size(); ++i )
+    {
+        Vec2 direction = (bodies->pos[i] - Vec2(center_x, center_y)).normalize();
+        Vec2 perpendicular = Vec2(-direction.y, direction.x);
+
+        bodies->vel[i] += perpendicular * bodies->pos[i].dist(Vec2(center_x, center_y)) * 0.03;
     }
 }
 
@@ -235,9 +247,6 @@ void ParticleManager::add_random(unsigned count, double mass)
 
 void ParticleManager::add_large_cube(unsigned count, double mass)
 {
-    this->width *= 5;
-    this->height *= 5;
-
     double center_x = width / 2.0;
     double center_y = height / 2.0;
 
@@ -257,5 +266,44 @@ void ParticleManager::add_large_cube(unsigned count, double mass)
         Vec2 perpendicular = Vec2(-direction.y, direction.x);
 
         bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(center_x, center_y)) * speed;
+    }
+}
+
+void ParticleManager::add_custom_shape1(unsigned count, double mass)
+{
+    double centerX = width / 2.0;
+    double centerY = height / 2.0;
+    double radius = std::min(centerX, centerY) * 0.8;
+    double speed = 0.02;
+
+    double petalCount = 6.0;     // Number of petals
+
+    // Calculate the number of bodies per flower (1/4 of the total count)
+    unsigned bodiesPerFlower = count / 8;
+
+    for ( unsigned i = 0; i < count; ++i )
+    {
+        bodies->mass[i] = mass;
+        bodies->radius[i] = 1.0;
+
+        // Determine the current flower index based on the body index
+        unsigned flowerIndex = i / bodiesPerFlower;
+
+        double angle = 2.0 * M_PI * i / bodiesPerFlower;  // Angle between each body
+
+        double petalAngle = angle * petalCount;  // Angle for the petal effect
+
+        // Determine the radius and petal radius based on the flower index
+        double currentRadius = radius * (1.0 - 0.1 * flowerIndex);
+        double currentPetalRadius = 200.0 * (1.0 + 0.1 * flowerIndex);
+
+        double x = centerX + currentRadius * cos(angle) + currentPetalRadius * cos(petalAngle);
+        double y = centerY + currentRadius * sin(angle) + currentPetalRadius * sin(petalAngle);
+        bodies->pos[i] = Vec2(x, y);
+
+        Vec2 direction = (bodies->pos[i] - Vec2(centerX, centerY)).normalize();
+        Vec2 perpendicular = Vec2(-direction.y, direction.x);
+
+        bodies->vel[i] = perpendicular * bodies->pos[i].dist(Vec2(centerX, centerY)) * speed;
     }
 }
