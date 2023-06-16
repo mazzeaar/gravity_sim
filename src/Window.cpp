@@ -173,8 +173,8 @@ void Window::draw_velocity_vectors()
             bodies->pos[i].y + sinValues[i] * length
         );
 
-        lines.append(sf::Vertex(startPos, sf::Color(255, 255, 255, 150)));
-        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 150)));
+        lines.append(sf::Vertex(startPos, sf::Color(255, 255, 255, 50)));
+        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 50)));
     }
 
     window->draw(lines);
