@@ -50,9 +50,9 @@ enum BodyType {
 int main()
 {
     double G = 6.67408e-3; // 10e8 stronger gravity
-    double theta = 1.8;
+    double theta = 1.0;
     double dt = 0.05;
-    unsigned body_count = 100000;
+    unsigned body_count = 200000;
     double mass = 10;
     int height = 2200;
     int width = 2200;
@@ -60,7 +60,7 @@ int main()
     //readConfig("../CONFIG.cfg", G, theta, dt, body_count, mass, height, width);
     SimulationManager* simulation_manager = new SimulationManager(width, height, "N-Body Simulation", G, theta, dt);
 
-    simulation_manager->add_bodies(body_count, mass, BodyType::SPINNING_CIRCLE);
+    simulation_manager->add_bodies(body_count, mass, BodyType::GALAXY);
     simulation_manager->toggle_debug_info();
     simulation_manager->toggle_pause();
 

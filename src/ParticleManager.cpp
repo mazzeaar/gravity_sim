@@ -120,9 +120,9 @@ void ParticleManager::add_spinning_circle(unsigned count, double mass)
 
 void ParticleManager::add_galaxy(unsigned count, double mass)
 {
-    double armCount = 3.0;       // Number of spiral arms
-    double armTightness = 0.5;   // Tightness of the spiral arms
-    double armVelocity = 0.03;   // Orbital velocity of the arms
+    double armCount = 5.0;       // Number of spiral arms
+    double armTightness = -0.1;   // Tightness of the spiral arms
+    double armVelocity = -0.05;   // Orbital velocity of the arms
 
     double center_x = width / 2.0;
     double center_y = height / 2.0;

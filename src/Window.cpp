@@ -18,7 +18,6 @@ Window::Window(int width, int height, const char* title, std::shared_ptr<Simulat
     window = new sf::RenderWindow(sf::VideoMode(width, height), title);
 
     window->setPosition(sf::Vector2i(0, 0));
-    window->setFramerateLimit(120);
     window->setVerticalSyncEnabled(true);
 
     // VIEWS
@@ -128,10 +127,20 @@ void Window::draw_bodies()
         }
     };
 
-    sf::VertexArray vertices(sf::Points);
-
     double highest_density = bodies->get_highest_density();
     double lowest_density = bodies->get_lowest_density();
+
+
+    double star_radius = 0.5;
+
+    sf::VertexArray stars(sf::Triangles);
+
+    sf::Vector2f top(0, -star_radius);
+    sf::Vector2f top_left(-star_radius * 0.5f, -star_radius * 0.5f);
+    sf::Vector2f top_right(star_radius * 0.5f, -star_radius * 0.5f);
+    sf::Vector2f bottom_left(-star_radius * 0.5f, star_radius * 0.5f);
+    sf::Vector2f bottom_right(star_radius * 0.5f, star_radius * 0.5f);
+    sf::Vector2f bottom(0, star_radius);
 
     for ( unsigned i = 0; i < bodies->get_size(); ++i )
     {
@@ -139,11 +148,35 @@ void Window::draw_bodies()
 
         sf::Color color = interpolateColor(normalized_density);
 
-        sf::Vertex vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y), color);
-        vertices.append(vertex);
+        sf::Vector2f position(bodies->pos[i].x, bodies->pos[i].y);
+
+        // triangle 1
+        stars.append(sf::Vertex(position + top, color));
+        stars.append(sf::Vertex(position + bottom_left, color));
+        stars.append(sf::Vertex(position + bottom_right, color));
+
+        // triangle 2
+        stars.append(sf::Vertex(position + bottom, color));
+        stars.append(sf::Vertex(position + top_left, color));
+        stars.append(sf::Vertex(position + top_right, color));
     }
 
-    window->draw(vertices);
+
+    /*
+     sf::VertexArray stars(sf::Points);
+
+     for ( unsigned i = 0; i < bodies->get_size(); ++i )
+     {
+         double normalized_density = (bodies->acc[i].length() - lowest_density) / (highest_density - lowest_density);
+
+         sf::Color color = interpolateColor(normalized_density);
+
+         sf::Vector2f position(bodies->pos[i].x, bodies->pos[i].y);
+
+         stars.append(sf::Vertex(position, color));
+     }
+ */
+    window->draw(stars);
 }
 
 void Window::draw_velocity_vectors()
@@ -174,7 +207,7 @@ void Window::draw_velocity_vectors()
         );
 
         lines.append(sf::Vertex(startPos, sf::Color(255, 255, 255, 50)));
-        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 50)));
+        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 150)));
     }
 
     window->draw(lines);

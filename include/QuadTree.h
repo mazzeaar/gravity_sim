@@ -8,7 +8,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <stack>
-#include <thread>
+#include <future>
 
 class QuadTree {
 private:
@@ -25,18 +25,23 @@ private:
     std::unique_ptr<QuadTree> SW;
     std::unique_ptr<QuadTree> SE;
 
-    sf::Color color;
+    // 0, 255, 0, 100
+    sf::Color color = sf::Color(0, 255, 0, 100);
 
     std::shared_ptr<sf::VertexArray> rectangles;
 
     void insert(unsigned index);
     bool subdivide();
 
-    bool contains(unsigned index);
-    inline bool is_leaf() { return NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr; }
+    void add_subdivision_bounds();
+    void add_root_bounds();
 
-    double calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance);
+    bool contains(unsigned index) const;
+    inline bool is_leaf() const { return NW == nullptr && NE == nullptr && SW == nullptr && SE == nullptr; }
+
+    double calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance) const;
     void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
+    void compute_force_recursive(unsigned index, double theta_squared, double G, unsigned long& calculations_per_frame);
 
 public:
     std::shared_ptr<Bodies> bodies;

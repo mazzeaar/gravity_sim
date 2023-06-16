@@ -27,55 +27,15 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
         }
     }
 
-    sf::Vertex vertex;
-    color = sf::Color::Green;
-    color.a = 120;
-
     if ( root )
     {
         if ( rectangles == nullptr )
         {
-            rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 8);  // Update the vertex array size
+            rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 8);
         }
 
-        // Draw the largest rectangle for the root
-        sf::Vertex vertex;
-        vertex.position = sf::Vector2f(top_left.x, top_left.y);
-        vertex.color = color;
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(top_left.x, top_left.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
-        rectangles->append(vertex);
-
-        vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
-        rectangles->append(vertex);
+        add_root_bounds();
+        add_subdivision_bounds();
     }
 }
 
@@ -96,63 +56,49 @@ QuadTree::~QuadTree()
 |             public methods             |
 -----------------------------------------*/
 
-// just a test
-void applyTidalForces(const std::shared_ptr<Bodies>& bodies, const Vec2& centralBodyPosition, double tidalCoefficient)
-{
-    for ( unsigned i = 0; i < bodies->get_size(); ++i )
-    {
-        Vec2 position = bodies->pos[i];
-        Vec2 direction = centralBodyPosition - position;
-        double distance = direction.length();
-
-        // Calculate the tidal force magnitude based on the gravitational gradient
-        double tidalForceMagnitude = tidalCoefficient * distance;
-
-        // Apply the tidal force to the particle
-        bodies->add_force(i, direction.normalize() * tidalForceMagnitude);
-    }
-}
-
 void QuadTree::update(double theta, double G, double dt, unsigned long& calculations_per_frame)
 {
-    const unsigned num_threads = std::thread::hardware_concurrency();
-    std::vector<std::thread> threads(num_threads);
+    unsigned num_threads = std::thread::hardware_concurrency();
 
-    const unsigned chunk_size = (bodies->get_size() + num_threads - 1) / num_threads;
+    unsigned bodies_size = bodies->get_size();
+    unsigned bodies_per_thread = (bodies_size + num_threads - 1) / num_threads;
 
+    std::vector<std::future<unsigned long>> futures(num_threads);
+
+    unsigned start = 0;
     for ( unsigned t = 0; t < num_threads; ++t )
     {
-        threads[t] = std::thread([&, t]()
+        unsigned end = std::min(start + bodies_per_thread, bodies_size);
+        futures[t] = std::async(std::launch::async, [this, theta, G, calculations_per_frame, start, end]()
             {
-                const unsigned start = t * chunk_size;
-                const unsigned end = std::min((t + 1) * chunk_size, bodies->get_size());
-
+                unsigned long local_calculations = 0;
                 for ( unsigned j = start; j < end; ++j )
                 {
-                    this->bodies->acc[j] = Vec2(0, 0);
-                    compute_force(j, theta, G, calculations_per_frame);
+                    bodies->acc[j] = Vec2(0, 0);
+                    compute_force(j, theta, G, local_calculations);
                 }
+                return local_calculations;
             });
+        start = end;
     }
 
-    for ( auto& thread : threads )
+    unsigned long total_calculations = 0;
+    for ( auto& future : futures )
     {
-        thread.join();
+        total_calculations += future.get();
     }
+    calculations_per_frame = total_calculations;
 
     bodies->remove_merged_bodies();
-
-    // just a test
-    applyTidalForces(bodies, this->center_of_mass, 0.01);
-
     bodies->update(dt);
 }
+
 
 /*----------------------------------------
 |             private methods            |
 -----------------------------------------*/
 
-bool QuadTree::contains(unsigned index)
+bool QuadTree::contains(unsigned index) const
 {
     return bodies->pos[index].x >= top_left.x
         && bodies->pos[index].x <= bottom_right.x
@@ -169,20 +115,7 @@ bool QuadTree::subdivide()
         return false;
     }
 
-    sf::Vertex vertex;
-
-    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
-    vertex.color = color;
-    rectangles->append(vertex);
-
-    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
-    rectangles->append(vertex);
-
-    vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
-    rectangles->append(vertex);
-
-    vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
-    rectangles->append(vertex);
+    add_subdivision_bounds();
 
     this->NW = std::make_unique<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0, rectangles, false);
     this->NE = std::make_unique<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0), rectangles, false);
@@ -243,44 +176,104 @@ void QuadTree::insert(unsigned index)
     }
 }
 
-void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
+void QuadTree::compute_force_recursive(unsigned index, double theta_squared, double G, unsigned long& calculations_per_frame)
 {
-    std::stack<QuadTree*> stack;
-    stack.push(this);
-
-    while ( !stack.empty() )
+    if ( this->body_index == index || this->mass == 0 )
     {
-        QuadTree* node = stack.top();
-        stack.pop();
+        return;
+    }
 
-        if ( node->mass == 0 || node->body_index == index )
-        {
-            continue;
-        }
+    Vec2 direction = this->center_of_mass - bodies->pos[index];
+    double squared_distance = direction.squared_length();
 
-        Vec2 direction = node->center_of_mass - bodies->pos[index];
-        double squared_distance = direction.squared_length();
-        double squared_size = (node->bottom_right - node->top_left).squared_length();
+    if ( squared_distance == 0 )
+    {
+        return;
+    }
 
-        if ( squared_size / squared_distance < theta || node->is_leaf() )
-        {
-            ++calculations_per_frame;
-            double force = calculate_gravitational_force(G, node->mass, bodies->mass[index], squared_distance);
-            bodies->add_force(index, direction * force);
-        }
-        else
-        {
-            if ( node->NE != nullptr ) stack.push(node->NE.get());
-            if ( node->NW != nullptr ) stack.push(node->NW.get());
-            if ( node->SE != nullptr ) stack.push(node->SE.get());
-            if ( node->SW != nullptr ) stack.push(node->SW.get());
-        }
+    double squared_size = (this->bottom_right - this->top_left).squared_length();
+
+    if ( squared_size / squared_distance < theta_squared || this->is_leaf() )
+    {
+        ++calculations_per_frame;
+        double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
+        bodies->add_force(index, direction * force);
+    }
+    else
+    {
+        if ( this->NE != nullptr )
+            this->NE->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
+        if ( this->NW != nullptr )
+            this->NW->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
+        if ( this->SE != nullptr )
+            this->SE->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
+        if ( this->SW != nullptr )
+            this->SW->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
     }
 }
 
-double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance)
+void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
+{
+    double theta_squared = theta * theta;
+    this->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
+}
+
+double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance) const
 {
     // softening factor, else force goes BRRRRRT
     const double epsilon_squared = 2.0;
     return G * mass1 * mass2 / (squared_distance + epsilon_squared);
+}
+
+
+/*----------------------------------------
+|              bound methods             |
+-----------------------------------------*/
+
+void QuadTree::add_subdivision_bounds()
+{
+    sf::Vertex vertex;
+    vertex.color = color;
+
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, top_left.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f((bottom_right.x + top_left.x) / 2.0f, bottom_right.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, (bottom_right.y + top_left.y) / 2.0f);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, (bottom_right.y + top_left.y) / 2.0f);
+    rectangles->append(vertex);
+}
+
+void QuadTree::add_root_bounds()
+{
+    sf::Vertex vertex;
+    vertex.color = color;
+
+    vertex.position = sf::Vector2f(top_left.x, top_left.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, top_left.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(bottom_right.x, bottom_right.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, bottom_right.y);
+    rectangles->append(vertex);
+
+    vertex.position = sf::Vector2f(top_left.x, top_left.y);
+    rectangles->append(vertex);
 }
