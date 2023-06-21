@@ -17,6 +17,9 @@ ParticleManager::~ParticleManager()
 
 void ParticleManager::add_bodies(BodyType type, unsigned num_bodies, double mass)
 {
+    this->body_type = type;
+    this->mass = mass;
+
     if ( num_bodies > bodies->get_size() )
     {
         bodies->resize(num_bodies);
@@ -94,6 +97,14 @@ void ParticleManager::get_particle_area(Vec2& top_left, Vec2& bottom_right)
         bottom_right.x += offset;
         top_left.x -= offset;
     }
+}
+
+void ParticleManager::reset()
+{
+    unsigned size = this->bodies->get_size();
+    this->bodies->clear();
+
+    add_bodies(this->body_type, size, this->mass);
 }
 
 /*----------------------------------------

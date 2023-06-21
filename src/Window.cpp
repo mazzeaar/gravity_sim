@@ -406,6 +406,12 @@ void Window::settings_events(sf::Event& event)
     {
         this->toggle_tracking = !this->toggle_tracking;
     }
+
+    else if ( event.key.code == sf::Keyboard::R )
+    {
+        simulation_manager->toggle_pause();
+        simulation_manager->reset_simulation();
+    }
 }
 
 void Window::handle_mouse_wheel(const sf::Event::MouseWheelScrollEvent& event)

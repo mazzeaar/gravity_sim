@@ -61,7 +61,7 @@ int main()
     //readConfig("../CONFIG.cfg", G, theta, dt, body_count, mass, height, width);
     SimulationManager* simulation_manager = new SimulationManager(width, height, "N-Body Simulation", G, theta, dt);
 
-    simulation_manager->add_bodies(body_count, mass, BodyType::LARGE_CUBE);
+    simulation_manager->add_bodies(body_count, mass, BodyType::GALAXY);
     simulation_manager->toggle_debug_info();
     simulation_manager->toggle_pause();
 

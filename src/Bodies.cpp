@@ -93,6 +93,20 @@ void Bodies::resize(unsigned num_bodies)
     to_be_deleted.resize(num_bodies, false);
 }
 
+void Bodies::clear()
+{
+    size = 0;
+
+    pos.clear();
+    vel.clear();
+    acc.clear();
+
+    mass.clear();
+    radius.clear();
+
+    to_be_deleted.clear();
+}
+
 void Bodies::remove_merged_bodies()
 {
     for ( unsigned i = 0; i < size; ++i )
