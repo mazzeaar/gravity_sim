@@ -17,7 +17,6 @@ private:
 
     Vec2 center_of_mass = Vec2(0, 0);
     double mass = 0.0;
-    unsigned depth = 0;
 
     int body_index = -1;
 
@@ -32,7 +31,6 @@ private:
     std::shared_ptr<sf::VertexArray> rectangles;
 
     void insert(unsigned index);
-    void reset_helper(std::vector<unsigned>& moved_bodies, Vec2 top_left, Vec2 bottom_right);
 
     bool subdivide();
     QuadTree* get_child_quadrant(unsigned index);
@@ -45,7 +43,6 @@ private:
 
     double calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance) const;
     void compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame);
-    void compute_force_recursive(unsigned index, double theta_squared, double G, unsigned long& calculations_per_frame);
 
 public:
     std::shared_ptr<Bodies> bodies;
@@ -56,7 +53,6 @@ public:
     ~QuadTree();
 
     void update(double theta, double G, double dt, unsigned long& calculations_per_frame);
-    void reset(Vec2 top_left, Vec2 bottom_right);
 
     inline sf::VertexArray* get_bounding_rectangles() const { return rectangles.get(); }
     inline Vec2 get_center_of_mass() const { return center_of_mass; }

@@ -9,8 +9,6 @@ QuadTree::QuadTree(std::shared_ptr<Bodies> bodies, Vec2 top_left, Vec2 bottom_ri
 {
     this->bodies = bodies;
 
-    depth = 0;
-
     center_of_mass = Vec2(0, 0);
     mass = 0.0;
 
@@ -89,88 +87,10 @@ void QuadTree::update(double theta, double G, double dt, unsigned long& calculat
     bodies->remove_merged_bodies();
 }
 
-void QuadTree::reset(Vec2 top_left, Vec2 bottom_right)
-{
-    this->top_left = top_left;
-    this->bottom_right = bottom_right;
-    this->rectangles->clear();
-
-    add_root_bounds();
-    add_subdivision_bounds();
-
-    std::vector<unsigned> moved_bodies;
-
-    reset_helper(moved_bodies, top_left, bottom_right);
-
-    for ( unsigned i = 0; i < moved_bodies.size(); ++i )
-    {
-        insert(moved_bodies[i]);
-    }
-
-    // Update the mass and center of mass of the root node
-    this->mass = this->NE->mass + this->NW->mass + this->SE->mass + this->SW->mass;
-    if ( this->mass == 0 )
-    {
-        this->center_of_mass = Vec2(0, 0);
-    }
-    else
-    {
-        this->center_of_mass = (this->NE->center_of_mass * this->NE->mass + this->NW->center_of_mass * this->NW->mass +
-            this->SE->center_of_mass * this->SE->mass + this->SW->center_of_mass * this->SW->mass) /
-            this->mass;
-    }
-}
-
-
 
 /*----------------------------------------
 |             private methods            |
 -----------------------------------------*/
-
-void QuadTree::reset_helper(std::vector<unsigned>& moved_bodies, Vec2 top_left, Vec2 bottom_right)
-{
-    this->top_left = top_left;
-    this->bottom_right = bottom_right;
-
-    if ( this->is_leaf() )
-    {
-        if ( this->body_index != -1 )
-        {
-            if ( this->contains(this->body_index) )
-            {
-                this->center_of_mass = bodies->pos[this->body_index];
-                this->mass = bodies->mass[this->body_index];
-            }
-            else
-            {
-                moved_bodies.push_back(this->body_index);
-                this->body_index = -1;
-            }
-        }
-        return;
-    }
-
-    Vec2 mid_point = (top_left + bottom_right) / 2.0;
-
-    this->NW->reset_helper(moved_bodies, top_left, mid_point);
-    this->NE->reset_helper(moved_bodies, Vec2(mid_point.x, top_left.y), Vec2(bottom_right.x, mid_point.y));
-    this->SW->reset_helper(moved_bodies, Vec2(top_left.x, mid_point.y), Vec2(mid_point.x, bottom_right.y));
-    this->SE->reset_helper(moved_bodies, mid_point, bottom_right);
-
-    // Aggregate mass and center of mass values from child nodes
-    this->mass = this->NE->mass + this->NW->mass + this->SE->mass + this->SW->mass;
-
-    if ( this->mass == 0 )
-    {
-        this->center_of_mass = Vec2(0, 0);
-    }
-    else
-    {
-        this->center_of_mass = (this->NE->center_of_mass * this->NE->mass + this->NW->center_of_mass * this->NW->mass +
-            this->SE->center_of_mass * this->SE->mass + this->SW->center_of_mass * this->SW->mass) /
-            this->mass;
-    }
-}
 
 bool QuadTree::contains(unsigned index) const
 {
@@ -182,25 +102,14 @@ bool QuadTree::contains(unsigned index) const
 
 bool QuadTree::subdivide()
 {
-    /*
-    const double merge_threshold = 0.01;
-    if ( bottom_right.x - top_left.x <= merge_threshold || bottom_right.y - top_left.y <= merge_threshold )
-    {
-        return false;
-    }
-    */
-
     add_subdivision_bounds();
 
-    this->NW = std::make_unique<QuadTree>(bodies, top_left, (top_left + bottom_right) / 2.0, rectangles, false);
-    this->NE = std::make_unique<QuadTree>(bodies, Vec2((top_left.x + bottom_right.x) / 2.0, top_left.y), Vec2(bottom_right.x, (top_left.y + bottom_right.y) / 2.0), rectangles, false);
-    this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, (top_left.y + bottom_right.y) / 2.0), Vec2((top_left.x + bottom_right.x) / 2.0, bottom_right.y), rectangles, false);
-    this->SE = std::make_unique<QuadTree>(bodies, (top_left + bottom_right) / 2.0, bottom_right, rectangles, false);
+    Vec2 center = (this->top_left + this->bottom_right) / 2.0;
 
-    NW->depth = depth + 1;
-    NE->depth = depth + 1;
-    SW->depth = depth + 1;
-    SE->depth = depth + 1;
+    this->NW = std::make_unique<QuadTree>(bodies, top_left, center, rectangles, false);
+    this->NE = std::make_unique<QuadTree>(bodies, Vec2(center.x, top_left.y), Vec2(bottom_right.x, center.y), rectangles, false);
+    this->SW = std::make_unique<QuadTree>(bodies, Vec2(top_left.x, center.y), Vec2(center.x, bottom_right.y), rectangles, false);
+    this->SE = std::make_unique<QuadTree>(bodies, center, bottom_right, rectangles, false);
 
     return true;
 }
@@ -230,9 +139,7 @@ void QuadTree::insert(unsigned index)
 
             if ( current == nullptr )
             {
-                std::cout << "THIS SHOULD NEVER HAPPEN:,)" << std::endl;
-                std::cout << "Error: Body not contained in any quadrant" << std::endl;
-                return;
+                throw std::runtime_error("Error: Body not contained in any quadrant, this should never happen lol");
             }
         }
 
@@ -273,59 +180,62 @@ QuadTree* QuadTree::get_child_quadrant(unsigned index)
     }
     else
     {
-        std::cout << "THIS SHOULD NEVER HAPPEN:)" << std::endl;
-        std::cout << "Error: Body not contained in any quadrant" << std::endl;
-        return nullptr;
-    }
-}
-
-
-void QuadTree::compute_force_recursive(unsigned index, double theta_squared, double G, unsigned long& calculations_per_frame)
-{
-    if ( this->body_index == index || this->mass == 0 )
-    {
-        return;
-    }
-
-    Vec2 direction = this->center_of_mass - bodies->pos[index];
-    double squared_distance = direction.squared_length();
-
-    if ( squared_distance == 0 )
-    {
-        return;
-    }
-
-    double squared_size = (this->bottom_right - this->top_left).squared_length();
-
-    if ( squared_size / squared_distance < theta_squared || this->is_leaf() )
-    {
-        ++calculations_per_frame;
-        double force = calculate_gravitational_force(G, this->mass, bodies->mass[index], squared_distance);
-        bodies->add_force(index, direction * force);
-    }
-    else
-    {
-        if ( this->NE != nullptr )
-            this->NE->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
-        if ( this->NW != nullptr )
-            this->NW->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
-        if ( this->SE != nullptr )
-            this->SE->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
-        if ( this->SW != nullptr )
-            this->SW->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
+        throw std::runtime_error("Error: Body not contained in any quadrant, this should never happen lol");
     }
 }
 
 void QuadTree::compute_force(unsigned index, double theta, double G, unsigned long& calculations_per_frame)
 {
     double theta_squared = theta * theta;
-    this->compute_force_recursive(index, theta_squared, G, calculations_per_frame);
+
+    std::stack<QuadTree*> stack;
+    QuadTree* current = this;
+    stack.push(this);
+
+    while ( !stack.empty() )
+    {
+        current = stack.top();
+        stack.pop();
+
+        if ( current->mass == 0 || current->body_index == index )
+        {
+            continue;
+        }
+
+        const Vec2 direction = current->center_of_mass - bodies->pos[index];
+        const double squared_distance = direction.squared_length();
+
+        if ( squared_distance == 0 )
+        {
+            continue;
+        }
+
+        const double squared_size = (current->bottom_right - current->top_left).squared_length();
+        const double size_ratio = squared_size / squared_distance;
+
+        if ( size_ratio < theta_squared || current->is_leaf() )
+        {
+            ++calculations_per_frame;
+            double force = calculate_gravitational_force(G, current->mass, bodies->mass[index], squared_distance);
+            bodies->add_force(index, direction * force);
+        }
+        else
+        {
+            if ( current->NE != nullptr )
+            {
+                stack.push(current->NE.get());
+                stack.push(current->NW.get());
+                stack.push(current->SE.get());
+                stack.push(current->SW.get());
+            }
+        }
+    }
 }
+
 
 double QuadTree::calculate_gravitational_force(double G, double mass1, double mass2, double squared_distance) const
 {
-    // softening factor, else force goes BRRRRRT
-    const double epsilon_squared = 2.0;
+    const double epsilon_squared = 2.0;    // softening factor, else force goes BRRRRRT
     return G * mass1 * mass2 / (squared_distance + epsilon_squared);
 }
 
