@@ -71,8 +71,8 @@ void Bodies::update(double dt)
 {
     for ( unsigned i = 0; i < size; ++i )
     {
-        vel[i] = vel[i] + acc[i] * (0.5 * dt);
-        pos[i] = pos[i] + vel[i] * dt;
+        vel[i] += acc[i] * (0.5 * dt);
+        pos[i] += vel[i] * dt;
     }
 }
 
@@ -91,6 +91,20 @@ void Bodies::resize(unsigned num_bodies)
     radius.resize(num_bodies, 0.0);
 
     to_be_deleted.resize(num_bodies, false);
+}
+
+void Bodies::clear()
+{
+    size = 0;
+
+    pos.clear();
+    vel.clear();
+    acc.clear();
+
+    mass.clear();
+    radius.clear();
+
+    to_be_deleted.clear();
 }
 
 void Bodies::remove_merged_bodies()

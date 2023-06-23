@@ -18,7 +18,6 @@ Window::Window(int width, int height, const char* title, std::shared_ptr<Simulat
     window = new sf::RenderWindow(sf::VideoMode(width, height), title);
 
     window->setPosition(sf::Vector2i(0, 0));
-    window->setFramerateLimit(120);
     window->setVerticalSyncEnabled(true);
 
     // VIEWS
@@ -100,7 +99,7 @@ void Window::draw_everything()
 
 void Window::draw_bodies()
 {
-    double interpolation_cutoff = 0.2;
+    double interpolation_cutoff = 0.5;
 
     sf::Color low_density_color = sf::Color(0, 128, 255);     // Light blue
     sf::Color mid_density_color = sf::Color(255, 0, 255);     // Magenta
@@ -128,10 +127,10 @@ void Window::draw_bodies()
         }
     };
 
-    sf::VertexArray vertices(sf::Points);
-
     double highest_density = bodies->get_highest_density();
     double lowest_density = bodies->get_lowest_density();
+
+    sf::VertexArray stars(sf::Points);
 
     for ( unsigned i = 0; i < bodies->get_size(); ++i )
     {
@@ -139,11 +138,12 @@ void Window::draw_bodies()
 
         sf::Color color = interpolateColor(normalized_density);
 
-        sf::Vertex vertex(sf::Vector2f(bodies->pos[i].x, bodies->pos[i].y), color);
-        vertices.append(vertex);
+        sf::Vector2f position(bodies->pos[i].x, bodies->pos[i].y);
+
+        stars.append(sf::Vertex(position, color));
     }
 
-    window->draw(vertices);
+    window->draw(stars);
 }
 
 void Window::draw_velocity_vectors()
@@ -174,7 +174,7 @@ void Window::draw_velocity_vectors()
         );
 
         lines.append(sf::Vertex(startPos, sf::Color(255, 255, 255, 50)));
-        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 50)));
+        lines.append(sf::Vertex(endPos, sf::Color(255, 255, 255, 150)));
     }
 
     window->draw(lines);
@@ -405,6 +405,12 @@ void Window::settings_events(sf::Event& event)
     else if ( event.key.code == sf::Keyboard::T )
     {
         this->toggle_tracking = !this->toggle_tracking;
+    }
+
+    else if ( event.key.code == sf::Keyboard::R )
+    {
+        simulation_manager->toggle_pause();
+        simulation_manager->reset_simulation();
     }
 }
 

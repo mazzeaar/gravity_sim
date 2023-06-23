@@ -42,9 +42,6 @@ void SimulationManager::run()
 {
     std::chrono::high_resolution_clock::time_point start_time;
 
-    Vec2 top_left, bottom_right;
-    particle_manager->get_particle_area(top_left, bottom_right);
-
     while ( window->is_open() )
     {
         this->calculations_per_frame = 0;
@@ -66,6 +63,9 @@ void SimulationManager::run()
 
         elapsed_time_graphics = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - start_time).count();
         total_frame_time = elapsed_time_physics + elapsed_time_graphics;
+
+        // THIS IS SHIT, BUT IF I DONT DO IT LIKE THAT THE QUADTREE IS ALWAYS OFF BY ONE FRAME:)
+        if ( !paused ) bodies->update(dt);
     }
 }
 
@@ -112,7 +112,6 @@ void SimulationManager::run()
 }
 */
 
-
 void SimulationManager::update_simulation()
 {
     Vec2 top_left, bottom_right;
@@ -120,8 +119,22 @@ void SimulationManager::update_simulation()
 
     std::shared_ptr<sf::VertexArray> rectangles = std::make_shared<sf::VertexArray>(sf::Lines, 0);
     tree = std::make_shared<QuadTree>(bodies, top_left, bottom_right, rectangles, true);
-
     tree->update(theta, G, dt, calculations_per_frame);
+}
+
+void SimulationManager::reset_simulation()
+{
+    steps = 0;
+    total_calculations = 0;
+    average_ratio_best_case = 0;
+    average_ratio_worst_case = 0;
+    calc_best_case = 0;
+    calc_worst_case = 0;
+    elapsed_time_physics = 0;
+    elapsed_time_graphics = 0;
+    total_frame_time = 0;
+
+    particle_manager->reset();
 }
 
 double SimulationManager::get_current_ratio_worst_case()

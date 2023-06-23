@@ -29,6 +29,7 @@ public:
 
     void update(double dt);
     void resize(unsigned num_bodies);
+    void clear();
 
     void remove_merged_bodies();
     void merge_bodies(unsigned keep_index, unsigned remove_index);

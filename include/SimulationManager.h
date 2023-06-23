@@ -61,10 +61,7 @@ public:
     |   Member Setters   |
     ---------------------*/
     inline void set_window(Window* window) { this->window = window; }
-    inline void add_bodies(unsigned count = 8000, double mass = 1.0, BodyType body_type = BodyType::RANDOM)
-    {
-        particle_manager->add_bodies(body_type, count, mass);
-    }
+    inline void add_bodies(unsigned count = 8000, double mass = 1.0, BodyType body_type = BodyType::RANDOM) { particle_manager->add_bodies(body_type, count, mass); }
 
     /*--------------------
     |   Member Getters   |
@@ -76,11 +73,7 @@ public:
     /*--------------------
     | Simulation Settings |
     ---------------------*/
-    inline long get_step() const { return steps; }
-
-    inline double get_G() const { return G; }
-    inline double get_theta() const { return theta; }
-    inline double get_dt() const { return dt; }
+    void reset_simulation();
 
     inline void increase_G() { this->G *= 2; }
     inline void decrease_G() { this->G = std::max(0.0, this->G * 0.5); }
@@ -90,6 +83,12 @@ public:
 
     inline void increase_dt() { this->dt += 0.05; }
     inline void decrease_dt() { this->dt = std::max(0.05, this->dt - 0.05); }
+
+    inline long get_step() const { return steps; }
+
+    inline double get_G() const { return G; }
+    inline double get_theta() const { return theta; }
+    inline double get_dt() const { return dt; }
 
     inline Vec2 get_center_of_mass() const { return tree->get_center_of_mass(); }
     inline void get_quadtree_size(double& x, double& y, double& width, double& height) const
