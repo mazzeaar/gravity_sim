@@ -1,3 +1,4 @@
+# NOTE: WILL PROBABLY ONLY WORK ON APPLE SILICON
 # Gravity Simulation
 
 This project is an implementation of a 2D gravity simulation using the Barnes-Hut algorithm and a quadtree data structure. The simulation is written in C++ and utilizes the SFML library for rendering.
